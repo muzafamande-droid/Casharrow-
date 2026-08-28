@@ -9,6 +9,7 @@ body{
   font-family:Arial,sans-serif;
   background:#f4f7fb;
   color:#172033;
+  min-height:100vh;
   padding-bottom:75px;
 }
 
@@ -38,7 +39,6 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:20px;
 }
 
 .greeting{
@@ -52,7 +52,7 @@ body{
 
 .greeting h1{
   margin-top:6px;
-  font-size:28px;
+  font-size:27px;
 }
 
 .container{
@@ -108,20 +108,11 @@ button{
 }
 
 .section-title{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
   margin-bottom:12px;
 }
 
 .section-title h2{
   font-size:19px;
-}
-
-.section-title span{
-  color:#0757e8;
-  font-size:13px;
-  font-weight:bold;
 }
 
 .grid{
@@ -187,6 +178,89 @@ button{
   font-size:14px;
 }
 
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  z-index:20;
+  padding:20px;
+  align-items:center;
+  justify-content:center;
+}
+
+.modal-box{
+  background:white;
+  width:100%;
+  max-width:420px;
+  border-radius:22px;
+  padding:24px;
+  position:relative;
+}
+
+.close{
+  position:absolute;
+  right:18px;
+  top:14px;
+  background:#eef1f5;
+  color:#333;
+  width:34px;
+  height:34px;
+  padding:0;
+  border-radius:50%;
+}
+
+.modal-box h2{
+  margin-bottom:7px;
+}
+
+.modal-box .subtitle{
+  color:#7b8494;
+  font-size:13px;
+  margin-bottom:20px;
+}
+
+input{
+  width:100%;
+  padding:14px;
+  border:1px solid #dce2ea;
+  border-radius:12px;
+  margin-bottom:12px;
+  font-size:15px;
+  outline:none;
+}
+
+input:focus{
+  border-color:#0757e8;
+}
+
+.form-button{
+  width:100%;
+  margin-top:5px;
+}
+
+.message{
+  display:none;
+  padding:11px;
+  border-radius:10px;
+  margin-bottom:12px;
+  font-size:13px;
+  background:#eef5ff;
+}
+
+.switch{
+  text-align:center;
+  margin-top:16px;
+  font-size:13px;
+  color:#7b8494;
+}
+
+.switch span{
+  color:#0757e8;
+  font-weight:bold;
+  cursor:pointer;
+}
+
 .bottom{
   position:fixed;
   bottom:0;
@@ -198,6 +272,7 @@ button{
   justify-content:space-around;
   align-items:center;
   box-shadow:0 -3px 15px rgba(0,0,0,.08);
+  z-index:10;
 }
 
 .nav{
@@ -220,14 +295,14 @@ button{
     <div class="logo">🏹 CashArrow</div>
     <div class="bell">🔔</div>
   </div>  <div class="greeting">
-    <p>Welcome back</p>
-    <h1>CashArrow Member 👋</h1>
+    <p>Welcome to your financial journey</p>
+    <h1>CashArrow 👋</h1>
   </div>
 </header><main class="container">  <section class="balance">
     <small>Total Balance</small>
     <div class="amount">UGX 0</div><div class="actions">
-  <button class="primary" onclick="alert('Login required')">Login</button>
-  <button class="secondary" onclick="alert('Registration coming soon')">Create Account</button>
+  <button class="primary" onclick="openModal('login')">Login</button>
+  <button class="secondary" onclick="openModal('register')">Create Account</button>
 </div>
 
   </section>  <section class="section">
@@ -238,13 +313,13 @@ button{
   <div class="card">
     <div class="icon">💰</div>
     <h3>Wallet</h3>
-    <p>View your wallet and transactions.</p>
+    <p>View your balance and transactions.</p>
   </div>
 
   <div class="card">
     <div class="icon">🎁</div>
     <h3>Rewards</h3>
-    <p>Check available rewards.</p>
+    <p>Explore available rewards.</p>
   </div>
 
   <div class="card">
@@ -256,7 +331,7 @@ button{
   <div class="card">
     <div class="icon">👥</div>
     <h3>My Team</h3>
-    <p>Manage your referral team.</p>
+    <p>Build and manage your team.</p>
   </div>
 
 </div>
@@ -264,13 +339,12 @@ button{
   </section>  <section class="section">
     <div class="section-title">
       <h2>Today's Tasks</h2>
-      <span>View all</span>
     </div><div class="task">
   <div class="task-info">
     <div class="task-icon">👥</div>
     <div>
       <strong>Invite friends</strong>
-      <p style="font-size:12px;color:#7b8494">Complete your task</p>
+      <p style="font-size:12px;color:#7b8494">Grow your network</p>
     </div>
   </div>
   <div class="reward">+UGX 500</div>
@@ -298,7 +372,50 @@ button{
   <div class="reward">+UGX 200</div>
 </div>
 
-  </section></main><nav class="bottom">
+  </section></main><div class="modal" id="modal">
+  <div class="modal-box"><button class="close" onclick="closeModal()">×</button>
+
+<div id="loginForm">
+
+  <h2>Welcome Back 👋</h2>
+  <p class="subtitle">Login to your CashArrow account</p>
+
+  <div class="message" id="loginMessage"></div>
+
+  <input id="loginPhone" type="text" placeholder="Phone number">
+  <input id="loginPassword" type="password" placeholder="Password">
+
+  <button class="primary form-button" onclick="login()">Login</button>
+
+  <div class="switch">
+    Don't have an account?
+    <span onclick="showRegister()">Create one</span>
+  </div>
+
+</div>
+
+<div id="registerForm" style="display:none">
+
+  <h2>Create Account 🚀</h2>
+  <p class="subtitle">Join CashArrow today</p>
+
+  <div class="message" id="registerMessage"></div>
+
+  <input id="registerName" type="text" placeholder="Full name">
+  <input id="registerPhone" type="text" placeholder="Phone number">
+  <input id="registerPassword" type="password" placeholder="Password (6+ characters)">
+
+  <button class="primary form-button" onclick="register()">Create Account</button>
+
+  <div class="switch">
+    Already have an account?
+    <span onclick="showLogin()">Login</span>
+  </div>
+
+</div>
+
+  </div>
+</div><nav class="bottom">
   <div class="nav active">
     <div>🏠</div>
     Home
@@ -312,5 +429,131 @@ button{
     <div>👤</div>
     Account
   </div>
-</nav></body>
+</nav><script>
+const modal = document.getElementById("modal");
+
+function openModal(type){
+  modal.style.display = "flex";
+
+  if(type === "register"){
+    showRegister();
+  }else{
+    showLogin();
+  }
+}
+
+function closeModal(){
+  modal.style.display = "none";
+}
+
+function showLogin(){
+  document.getElementById("loginForm").style.display = "block";
+  document.getElementById("registerForm").style.display = "none";
+  clearMessages();
+}
+
+function showRegister(){
+  document.getElementById("loginForm").style.display = "none";
+  document.getElementById("registerForm").style.display = "block";
+  clearMessages();
+}
+
+function clearMessages(){
+  document.getElementById("loginMessage").style.display = "none";
+  document.getElementById("registerMessage").style.display = "none";
+}
+
+function showMessage(id,text){
+  const box = document.getElementById(id);
+  box.textContent = text;
+  box.style.display = "block";
+}
+
+async function register(){
+
+  const name = document.getElementById("registerName").value.trim();
+  const phone = document.getElementById("registerPhone").value.trim();
+  const password = document.getElementById("registerPassword").value;
+
+  if(!name || !phone || !password){
+    showMessage("registerMessage","Please fill in all fields.");
+    return;
+  }
+
+  try{
+
+    const response = await fetch("/api/register",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        name,
+        phone,
+        password
+      })
+    });
+
+    const data = await response.json();
+
+    if(data.success){
+      showMessage("registerMessage","Account created successfully! You can now login.");
+      setTimeout(showLogin,1200);
+    }else{
+      showMessage("registerMessage",data.message || "Registration failed.");
+    }
+
+  }catch(error){
+    showMessage("registerMessage","Unable to connect to CashArrow server.");
+  }
+}
+
+async function login(){
+
+  const phone = document.getElementById("loginPhone").value.trim();
+  const password = document.getElementById("loginPassword").value;
+
+  if(!phone || !password){
+    showMessage("loginMessage","Please enter your phone and password.");
+    return;
+  }
+
+  try{
+
+    const response = await fetch("/api/login",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        phone,
+        password
+      })
+    });
+
+    const data = await response.json();
+
+    if(data.success){
+
+      localStorage.setItem("casharrowUser",JSON.stringify(data.user));
+
+      showMessage("loginMessage","Login successful! Welcome, " + data.user.name);
+
+      setTimeout(closeModal,1200);
+
+    }else{
+      showMessage("loginMessage",data.message || "Login failed.");
+    }
+
+  }catch(error){
+    showMessage("loginMessage","Unable to connect to CashArrow server.");
+  }
+}
+
+window.onclick = function(event){
+  if(event.target === modal){
+    closeModal();
+  }
+}
+</script></body>
 </html>
