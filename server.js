@@ -1,4 +1,3 @@
-
 const express = require("express");
 const path = require("path");
 
@@ -12,7 +11,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/api/status", (req, res) => {
 res.json({
 success: true,
-message: console.log("CashArrow is running on port ${PORT}");
+message: "CashArrow server is running"
 });
 });
 
