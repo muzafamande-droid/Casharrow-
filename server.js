@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/api/status", (req, res) => {
 res.json({
 success: true,
-message: "CashArrow server is running"
+message: console.log("CashArrow is running on port ${PORT}");
 });
 });
 
