@@ -19,7 +19,9 @@ db.exec(`
     vip INTEGER DEFAULT 1,
     salary_claimed INTEGER DEFAULT 0,
     last_checkin TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    referral_code TEXT UNIQUE,
+    referred_by INTEGER
   );
 
   CREATE TABLE IF NOT EXISTS tasks (
@@ -69,27 +71,104 @@ db.exec(`
   );
 `);
 
-const adminExists = db.prepare('SELECT id FROM users WHERE role = ?').get('admin');
-if (!adminExists) {
-  const adminPassword = process.env.ADMIN_PASSWORD;
+/*
+  Add referral columns to an existing database.
+  This is safe if the columns already exist.
+*/
 
-if (!adminPassword) {
-  throw new Error('ADMIN_PASSWORD environment variable is not configured');
+const userColumns = db
+  .prepare("PRAGMA table_info(users)")
+  .all()
+  .map(column => column.name);
+
+if (!userColumns.includes("referral_code")) {
+  db.prepare(
+    "ALTER TABLE users ADD COLUMN referral_code TEXT"
+  ).run();
 }
 
-const hash = bcrypt.hashSync(adminPassword, 12);
+if (!userColumns.includes("referred_by")) {
+  db.prepare(
+    "ALTER TABLE users ADD COLUMN referred_by INTEGER"
+  ).run();
+}
+
+/*
+  Give existing users a referral code.
+*/
+
+const usersWithoutReferral = db.prepare(`
+  SELECT id
+  FROM users
+  WHERE referral_code IS NULL
+`);
+
+const updateReferralCode = db.prepare(`
+  UPDATE users
+  SET referral_code = ?
+  WHERE id = ?
+`);
+
+for (const user of usersWithoutReferral.all()) {
+
+  const code = "CA" + String(user.id).padStart(6, "0");
+
+  updateReferralCode.run(code, user.id);
+}
+
+
+/*
+  Create admin account if one does not exist.
+*/
+
+const adminExists = db
+  .prepare('SELECT id FROM users WHERE role = ?')
+  .get('admin');
+
+if (!adminExists) {
+
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    throw new Error(
+      'ADMIN_PASSWORD environment variable is not configured'
+    );
+  }
+
+  const hash = bcrypt.hashSync(adminPassword, 12);
+
   const info = db.prepare(`
-    INSERT INTO users (phone, name, password, role, balance, vip)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run('admin', 'Admin', hash, 'admin', 0, 10);
+    INSERT INTO users
+    (phone, name, password, role, balance, vip, referral_code)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    'admin',
+    'Admin',
+    hash,
+    'admin',
+    0,
+    10,
+    'CAADMIN'
+  );
 
   const adminId = info.lastInsertRowid;
-  const insertTask = db.prepare('INSERT INTO tasks (user_id, title, reward) VALUES (?, ?, ?)');
+
+  const insertTask = db.prepare(`
+    INSERT INTO tasks
+    (user_id, title, reward)
+    VALUES (?, ?, ?)
+  `);
+
   insertTask.run(adminId, 'Invite 3 friends', 500);
   insertTask.run(adminId, 'Daily check-in', 50);
   insertTask.run(adminId, 'Share app', 200);
 
-  const insertReward = db.prepare('INSERT INTO rewards (user_id, title, amount, claimed) VALUES (?, ?, ?, ?)');
+  const insertReward = db.prepare(`
+    INSERT INTO rewards
+    (user_id, title, amount, claimed)
+    VALUES (?, ?, ?, ?)
+  `);
+
   insertReward.run(adminId, 'Welcome', 0, 1);
   insertReward.run(adminId, 'VIP Bonus', 500, 0);
 }
