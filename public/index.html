@@ -308,17 +308,23 @@ select:focus{
     <div class="logo">🏹 CashArrow</div>
     <div class="bell">🔔</div>
   </div>  <div class="greeting">
-    <p>Welcome to your financial journey</p>
-    <h1>CashArrow 👋</h1>
-  </div>
-</header><main class="container">  <section class="balance">
-    <small>Total Balance</small>
-    <div class="amount">UGX 0</div><div class="actions">
-  <button class="primary" onclick="openModal('login')">Login</button>
-  <button class="secondary" onclick="openModal('register')">Create Account</button>
+  <p id="welcomeText">Welcome to your financial journey</p>
+  <h1 id="welcomeName">CashArrow 👋</h1>
 </div>
+</header><main class="container">  <section class="balance">
+  <small>Total Balance</small>
 
-  </section> <section class="balance">
+  <div class="amount">UGX 0</div>
+
+  <div class="actions" id="guestActions">
+    <button class="primary" onclick="openModal('login')">Login</button>
+    <button class="secondary" onclick="openModal('register')">Create Account</button>
+  </div>
+
+</section>
+
+<section class="balance" id="userWallet" style="display:none;">
+
   <small>💰 My Wallet</small>
 
   <div class="amount" id="walletBalance">UGX 0</div>
@@ -329,8 +335,8 @@ select:focus{
   </div>
 
   <div id="walletMessage"></div>
-</section>
 
+</section>
 <section class="balance" id="withdrawSection" style="display:none;">
   <small>📤 Withdraw Funds</small>
 
@@ -353,7 +359,7 @@ select:focus{
   placeholder="Mobile Money phone number"
 >
 
-  <div class="actions">
+    <div class="actions">
     <button class="primary" onclick="submitWithdrawal()">
       Withdraw
     </button>
@@ -364,18 +370,14 @@ select:focus{
   </div>
 
   <div id="withdrawMessage"></div>
-</section>
 
-<section class="balance">
+</section>
+  <section class="balance" id="userTransactions" style="display:none;">
   <small>🧾 Recent Transactions</small>
   <div id="transactionsList">
     No transactions yet.
   </div>
-</section> <section class="section">
-    <div class="section-title">
-      <h2>Quick Access</h2>
-    </div><div class="grid">
-
+</section>
   <div class="card">
     <div class="icon">💰</div>
     <h3>Wallet</h3>
@@ -610,9 +612,27 @@ if(data.success){
 setTimeout(() => {
 
   if (data.user.role === "admin") {
+
     window.location.href = "/admin.html";
+
   } else {
+
     closeModal();
+
+    document.getElementById("guestActions").style.display = "none";
+
+document.getElementById("userWallet").style.display = "block";
+
+document.getElementById("userTransactions").style.display = "block";
+
+document.getElementById("welcomeText").textContent =
+  "Welcome back";
+
+document.getElementById("welcomeName").textContent =
+  data.user.name + " 👋";
+
+loadWallet();
+
   }
 
 }, 1200);
@@ -655,8 +675,6 @@ async function loadWallet(){
 
   }
 }
-
-loadWallet(); 
   function openWithdraw(){
 
   const token = localStorage.getItem("casharrowToken");
