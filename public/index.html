@@ -411,7 +411,7 @@ select:focus{
 
 </section>
 
-<section class="section">
+<section class="section" id="todayTasks">
   <div class="section-title">
     <h2>Today's Tasks</h2>
   </div>
@@ -895,11 +895,14 @@ function goToTasks(){
 
   if(!requireLogin()) return;
 
-  document.querySelector(".section").scrollIntoView({
-    behavior:"smooth",
-    block:"start"
-  });
+  const tasks = document.getElementById("todayTasks");
 
+  if(tasks){
+    tasks.scrollIntoView({
+      behavior:"smooth",
+      block:"start"
+    });
+  }
 }
 
 function goToTeam(){
