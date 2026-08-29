@@ -491,7 +491,53 @@ select:focus{
 
 </section>
 
+<section class="balance" id="teamSection" style="display:none;">
+
+  <small>👥 My Team</small>
+
+  <h2 style="margin:12px 0 8px;">Build Your Team</h2>
+
+  <p style="color:#7b8494;font-size:13px;margin-bottom:16px;">
+    Invite friends and grow your CashArrow team.
+  </p>
+
+  <div class="task">
+    <div class="task-info">
+      <div class="task-icon">👥</div>
+      <div>
+        <strong>Team Members</strong>
+        <p style="font-size:12px;color:#7b8494">
+          People you've invited
+        </p>
+      </div>
+    </div>
+    <div class="reward">0</div>
+  </div>
+
+  <div class="task">
+    <div class="task-info">
+      <div class="task-icon">💰</div>
+      <div>
+        <strong>Team Earnings</strong>
+        <p style="font-size:12px;color:#7b8494">
+          Earnings from your team
+        </p>
+      </div>
+    </div>
+    <div class="reward">UGX 0</div>
+  </div>
+
+  <button
+    class="primary"
+    style="width:100%;margin-top:8px;"
+    onclick="alert('Referral sharing will be added next.')">
+    👥 Invite Friends
+  </button>
+
+</section>
+
 </main><div class="modal" id="modal">
+
   <div class="modal-box"><button class="close" onclick="closeModal()">×</button>
 
 <div id="loginForm">
@@ -909,7 +955,16 @@ function goToTeam(){
 
   if(!requireLogin()) return;
 
-  alert("👥 My Team section is coming next.");
+  const team = document.getElementById("teamSection");
+
+  if(team){
+    team.style.display = "block";
+
+    team.scrollIntoView({
+      behavior:"smooth",
+      block:"start"
+    });
+  }
 }
 
 </script>
