@@ -1,14 +1,52 @@
 const express = require("express");
 const path = require("path");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const db = require("./database");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET;
 
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is not configured");
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers.authorization;
 
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required"
+    });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const user = jwt.verify(token, JWT_SECRET);
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired session"
+    });
+  }
+}
+
+function requireAdmin(req, res, next) {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Admin access required"
+    });
+  }
+
+  next();
+}
 app.use(express.static(path.join(__dirname, "public")));
 
 // Server status
@@ -80,21 +118,42 @@ success: false,
 message: "Invalid phone or password"
 });
 }
+const token = jwt.sign(
+  {
+    id: user.id,
+    role: user.role
+  },
+  JWT_SECRET,
+  {
+    expiresIn: "7d"
+  }
+);
 
 res.json({
-success: true,
-message: "Login successful",
-user: {
-id: user.id,
-name: user.name,
-phone: user.phone,
-role: user.role,
-balance: user.balance,
-wallet: user.wallet
-}
+  success: true,
+  message: "Login successful",
+  token,
+  user: {
+    id: user.id,
+    name: user.name,
+    phone: user.phone,
+    role: user.role,
+    balance: user.balance,
+    wallet: user.wallet
+  }
 });
 });
-
+// Admin test route
+app.get("/api/admin", authenticateToken, requireAdmin, (req, res) => {
+  res.json({
+    success: true,
+    message: "Admin access granted",
+    admin: {
+      id: req.user.id,
+      role: req.user.role
+    }
+  });
+});
 // Tasks
 app.get("/api/tasks", (req, res) => {
 const tasks = db.prepare("SELECT id, title, reward, done FROM tasks ORDER BY id DESC").all();
@@ -104,6 +163,7 @@ success: true,
 tasks
 });
 });
+
 
 // Rewards
 app.get("/api/rewards", (req, res) => {
