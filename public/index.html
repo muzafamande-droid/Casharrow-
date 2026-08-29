@@ -772,11 +772,29 @@ async function submitWithdrawal(){
   }
 }
 
-
 window.onclick = function(event){
   if(event.target === modal){
     closeModal();
   }
 }
-</script></body>
-</html>
+
+const savedUser = localStorage.getItem("casharrowUser");
+
+if(savedUser){
+  const user = JSON.parse(savedUser);
+
+  if(user.role !== "admin"){
+    document.getElementById("guestActions").style.display = "none";
+    document.getElementById("userWallet").style.display = "block";
+    document.getElementById("userTransactions").style.display = "block";
+
+    document.getElementById("welcomeText").textContent =
+      "Welcome back";
+
+    document.getElementById("welcomeName").textContent =
+      user.name + " 👋";
+
+    loadWallet();
+  }
+}
+</script>
