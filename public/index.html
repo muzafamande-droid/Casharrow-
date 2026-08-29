@@ -372,62 +372,73 @@ select:focus{
   <div id="withdrawMessage"></div>
 
 </section>
-  <section class="balance" id="userTransactions" style="display:none;">
+<section class="balance" id="userTransactions" style="display:none;">
   <small>🧾 Recent Transactions</small>
   <div id="transactionsList">
     No transactions yet.
   </div>
 </section>
-  <div class="card">
-    <div class="icon">💰</div>
-    <h3>Wallet</h3>
-    <p>View your balance and transactions.</p>
-  </div>
 
-  <div class="card">
-    <div class="icon">🎁</div>
-    <h3>Rewards</h3>
-    <p>Explore available rewards.</p>
-  </div>
+<section class="section">
 
-  <div class="card">
-    <div class="icon">🎯</div>
-    <h3>Tasks</h3>
-    <p>Complete tasks and track progress.</p>
-  </div>
+  <div class="grid">
 
-  <div class="card">
-    <div class="icon">👥</div>
-    <h3>My Team</h3>
-    <p>Build and manage your team.</p>
-  </div>
-
-</div>
-
-  </section>  <section class="section">
-    <div class="section-title">
-      <h2>Today's Tasks</h2>
-    </div><div class="task">
-  <div class="task-info">
-    <div class="task-icon">👥</div>
-    <div>
-      <strong>Invite friends</strong>
-      <p style="font-size:12px;color:#7b8494">Grow your network</p>
+    <div class="card" onclick="goToWallet()">
+      <div class="icon">💰</div>
+      <h3>Wallet</h3>
+      <p>View your balance and transactions.</p>
     </div>
-  </div>
-  <div class="reward">+UGX 500</div>
-</div>
 
-<div class="task">
-  <div class="task-info">
-    <div class="task-icon">📅</div>
-    <div>
-      <strong>Daily check-in</strong>
-      <p style="font-size:12px;color:#7b8494">Check in today</p>
+    <div class="card" onclick="goToRewards()">
+      <div class="icon">🎁</div>
+      <h3>Rewards</h3>
+      <p>Explore available rewards.</p>
     </div>
+
+    <div class="card" onclick="goToTasks()">
+      <div class="icon">🎯</div>
+      <h3>Tasks</h3>
+      <p>Complete tasks and track your progress.</p>
+    </div>
+
+    <div class="card" onclick="goToTeam()">
+      <div class="icon">👥</div>
+      <h3>My Team</h3>
+      <p>Build and manage your team.</p>
+    </div>
+
   </div>
-  <div class="reward">+UGX 50</div>
-</div>
+
+</section>
+
+<section class="section">
+  <div class="section-title">
+    <h2>Today's Tasks</h2>
+  </div>
+
+  <div class="task">
+    <div class="task-info">
+      <div class="task-icon">👥</div>
+      <div>
+        <strong>Invite friends</strong>
+        <p style="font-size:12px;color:#7b8494">Grow your network</p>
+      </div>
+    </div>
+
+    <div class="reward">+UGX 500</div>
+  </div>
+
+  <div class="task">
+    <div class="task-info">
+      <div class="task-icon">📅</div>
+      <div>
+        <strong>Daily check-in</strong>
+        <p style="font-size:12px;color:#7b8494">Check in today</p>
+      </div>
+    </div>
+
+    <div class="reward">+UGX 50</div>
+  </div>
 
 <div class="task">
   <div class="task-info">
@@ -797,4 +808,57 @@ if(savedUser){
     loadWallet();
   }
 }
+
+function requireLogin(){
+
+  const token = localStorage.getItem("casharrowToken");
+
+  if(!token){
+    openModal("login");
+    return false;
+  }
+
+  return true;
+}
+
+function goToWallet(){
+
+  if(!requireLogin()) return;
+
+  document.getElementById("userWallet").style.display = "block";
+  document.getElementById("userTransactions").style.display = "block";
+
+  document.getElementById("userWallet").scrollIntoView({
+    behavior:"smooth",
+    block:"start"
+  });
+
+  loadWallet();
+}
+
+function goToRewards(){
+
+  if(!requireLogin()) return;
+
+  alert("🎁 Rewards section is coming next.");
+}
+
+function goToTasks(){
+
+  if(!requireLogin()) return;
+
+  document.querySelector(".section").scrollIntoView({
+    behavior:"smooth",
+    block:"start"
+  });
+
+}
+
+function goToTeam(){
+
+  if(!requireLogin()) return;
+
+  alert("👥 My Team section is coming next.");
+}
+
 </script>
