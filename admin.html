@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CashArrow Admin</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #172033;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0757e8, #14a3ff);
+      color: white;
+      padding: 24px 20px;
+    }
+
+    header h1 {
+      font-size: 25px;
+    }
+
+    header p {
+      margin-top: 6px;
+      opacity: .85;
+      font-size: 13px;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      padding: 20px 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,.06);
+    }
+
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .status {
+      color: #0a8f52;
+      font-weight: bold;
+    }
+
+    button {
+      border: 0;
+      padding: 13px 18px;
+      border-radius: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .logout {
+      background: #ffecec;
+      color: #d93025;
+    }
+
+    #message {
+      margin-top: 12px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>👑 CashArrow Admin Panel</h1>
+  <p>Private administration area</p>
+</header>
+
+<main class="container">
+
+  <div class="card">
+    <h2>🔐 Security Status</h2>
+    <p class="status">Admin authentication active</p>
+  </div>
+
+  <div class="card">
+    <h2>👤 Administrator</h2>
+    <p id="adminInfo">Checking authorization...</p>
+  </div>
+
+  <div class="card">
+    <h2>⚙️ Administration</h2>
+    <p>Admin controls will be added here.</p>
+  </div>
+
+  <div class="card">
+    <button class="logout" onclick="logout()">Logout</button>
+    <div id="message"></div>
+  </div>
+
+</main>
+
+<script>
+
+async function checkAdmin() {
+
+  const token = localStorage.getItem("casharrowToken");
+
+  if (!token) {
+    window.location.href = "/";
+    return;
+  }
+
+  try {
+
+    const response = await fetch("/api/admin", {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      localStorage.removeItem("casharrowToken");
+      localStorage.removeItem("casharrowUser");
+      window.location.href = "/";
+      return;
+    }
+
+    document.getElementById("adminInfo").textContent =
+      "Admin ID: " + data.admin.id +
+      " | Role: " + data.admin.role;
+
+  } catch (error) {
+
+    document.getElementById("message").textContent =
+      "Unable to verify admin session.";
+
+  }
+}
+
+function logout() {
+
+  localStorage.removeItem("casharrowToken");
+  localStorage.removeItem("casharrowUser");
+
+  window.location.href = "/";
+}
+
+checkAdmin();
+
+</script>
+
+</body>
+</html>
