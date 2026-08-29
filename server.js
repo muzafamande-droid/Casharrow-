@@ -182,7 +182,8 @@ res.json({
     phone: user.phone,
     role: user.role,
     balance: user.balance,
-    wallet: user.wallet
+    wallet: user.wallet,
+    referralCode: user.referral_code
   }
 });
 });
