@@ -177,7 +177,20 @@ app.get("/api/admin/dashboard", authenticateToken, requireAdmin, (req, res) => {
     totalTasks
   });
 });
+// Admin users
+app.get("/api/admin/users", authenticateToken, requireAdmin, (req, res) => {
 
+  const users = db.prepare(`
+    SELECT id, name, phone, balance, role, vip
+    FROM users
+    ORDER BY id DESC
+  `).all();
+
+  res.json({
+    success: true,
+    users
+  });
+});
 // Tasks
 app.get("/api/tasks", (req, res) => {
 const tasks = db.prepare("SELECT id, title, reward, done FROM tasks ORDER BY id DESC").all();
