@@ -533,21 +533,26 @@ async function login(){
 
     const data = await response.json();
 
-    if(data.success){
+if(data.success){
 
-      localStorage.setItem("casharrowUser",JSON.stringify(data.user));
+  localStorage.setItem("casharrowToken", data.token);
+  localStorage.setItem("casharrowUser", JSON.stringify(data.user));
 
-      showMessage("loginMessage","Login successful! Welcome, " + data.user.name);
+  showMessage("loginMessage","Login successful! Welcome, " + data.user.name);
 
-      setTimeout(closeModal,1200);
+  setTimeout(closeModal,1200);
 
-    }else{
-      showMessage("loginMessage",data.message || "Login failed.");
-    }
+}else{
 
-  }catch(error){
-    showMessage("loginMessage","Unable to connect to CashArrow server.");
-  }
+  showMessage("loginMessage",data.message || "Login failed.");
+
+}
+
+}catch(error){
+
+  showMessage("loginMessage","Unable to connect to CashArrow server.");
+
+}
 }
 
 window.onclick = function(event){
