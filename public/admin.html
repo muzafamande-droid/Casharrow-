@@ -81,12 +81,18 @@
 
 <body>
 
+  </style>
+</head>
+
+<body>
+
 <header>
   <h1>👑 CashArrow Admin Panel</h1>
   <p>Private administration area</p>
 </header>
 
 <main class="container">
+
 
   <div class="card">
     <h2>🔐 Security Status</h2>
@@ -99,9 +105,16 @@
   </div>
 
   <div class="card">
-    <h2>⚙️ Administration</h2>
-    <p>Admin controls will be added here.</p>
-  </div>
+  <h2>📊 Dashboard</h2>
+
+  <p>👥 Total Users: <strong id="totalUsers">Loading...</strong></p>
+  <p>💰 Total Balance: <strong id="totalBalance">Loading...</strong></p>
+  <p>🎯 Total Tasks: <strong id="totalTasks">Loading...</strong></p>
+
+  <button onclick="loadDashboard()">🔄 Refresh</button>
+
+  <div id="dashboardMessage"></div>
+</div>
 
   <div class="card">
     <button class="logout" onclick="logout()">Logout</button>
@@ -149,6 +162,47 @@ async function checkAdmin() {
 
   }
 }
+async function loadDashboard() {
+
+  const token = localStorage.getItem("casharrowToken");
+
+  if (!token) {
+    window.location.href = "/";
+    return;
+  }
+
+  try {
+
+    const response = await fetch("/api/admin/dashboard", {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      document.getElementById("dashboardMessage").textContent =
+        data.message || "Unable to load dashboard.";
+      return;
+    }
+
+    document.getElementById("totalUsers").textContent =
+      data.totalUsers;
+
+    document.getElementById("totalBalance").textContent =
+      "UGX " + Number(data.totalBalance).toLocaleString();
+
+    document.getElementById("totalTasks").textContent =
+      data.totalTasks;
+
+  } catch (error) {
+
+    document.getElementById("dashboardMessage").textContent =
+      "Unable to load dashboard.";
+
+  }
+}
 
 function logout() {
 
@@ -159,6 +213,7 @@ function logout() {
 }
 
 checkAdmin();
+loadDashboard();
 
 </script>
 
