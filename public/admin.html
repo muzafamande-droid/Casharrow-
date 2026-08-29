@@ -116,6 +116,20 @@
   <div id="dashboardMessage"></div>
 </div>
 
+    </div>
+
+  <div class="card">
+    <h2>👥 Users</h2>
+
+    <button onclick="loadUsers()">🔄 Refresh Users</button>
+
+    <div id="usersMessage"></div>
+
+    <div id="usersList">
+      Loading users...
+    </div>
+  </div>
+
   <div class="card">
     <button class="logout" onclick="logout()">Logout</button>
     <div id="message"></div>
@@ -203,7 +217,55 @@ async function loadDashboard() {
 
   }
 }
+async function loadUsers() {
 
+  const token = localStorage.getItem("casharrowToken");
+
+  if (!token) {
+    window.location.href = "/";
+    return;
+  }
+
+  try {
+
+    const response = await fetch("/api/admin/users", {
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      document.getElementById("usersMessage").textContent =
+        data.message || "Unable to load users.";
+      return;
+    }
+
+    const usersList = document.getElementById("usersList");
+
+    if (data.users.length === 0) {
+      usersList.textContent = "No users found.";
+      return;
+    }
+
+    usersList.innerHTML = data.users.map(user => `
+      <div class="card">
+        <strong>${user.name}</strong><br>
+        Phone: ${user.phone}<br>
+        Balance: UGX ${Number(user.balance).toLocaleString()}<br>
+        Role: ${user.role}<br>
+        VIP: ${user.vip}
+      </div>
+    `).join("");
+
+  } catch (error) {
+
+    document.getElementById("usersMessage").textContent =
+      "Unable to load users.";
+
+  }
+}
 function logout() {
 
   localStorage.removeItem("casharrowToken");
@@ -214,6 +276,7 @@ function logout() {
 
 checkAdmin();
 loadDashboard();
+loadUsers();
 
 </script>
 
