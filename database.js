@@ -4,6 +4,10 @@ const path = require('path');
 
 const db = new Database(path.join(__dirname, 'casharrow.db'));
 
+/*
+  Create CashArrow database tables
+*/
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,8 +76,8 @@ db.exec(`
 `);
 
 /*
-  Add referral columns to an existing database.
-  This is safe if the columns already exist.
+  Add referral columns to an existing database
+  if they do not already exist.
 */
 
 const userColumns = db
@@ -110,20 +114,18 @@ const updateReferralCode = db.prepare(`
 `);
 
 for (const user of usersWithoutReferral.all()) {
-
   const code = "CA" + String(user.id).padStart(6, "0");
 
   updateReferralCode.run(code, user.id);
 }
-
 
 /*
   Create admin account if one does not exist.
 */
 
 const adminExists = db
-  .prepare('SELECT id FROM users WHERE role = ?')
-  .get('admin');
+  .prepare("SELECT id FROM users WHERE role = ?")
+  .get("admin");
 
 if (!adminExists) {
 
@@ -131,7 +133,7 @@ if (!adminExists) {
 
   if (!adminPassword) {
     throw new Error(
-      'ADMIN_PASSWORD environment variable is not configured'
+      "ADMIN_PASSWORD environment variable is not configured"
     );
   }
 
@@ -142,13 +144,13 @@ if (!adminExists) {
     (phone, name, password, role, balance, vip, referral_code)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
-    'admin',
-    'Admin',
+    "admin",
+    "Admin",
     hash,
-    'admin',
+    "admin",
     0,
     10,
-    'CAADMIN'
+    "CAADMIN"
   );
 
   const adminId = info.lastInsertRowid;
@@ -159,9 +161,9 @@ if (!adminExists) {
     VALUES (?, ?, ?)
   `);
 
-  insertTask.run(adminId, 'Invite 3 friends', 500);
-  insertTask.run(adminId, 'Daily check-in', 50);
-  insertTask.run(adminId, 'Share app', 200);
+  insertTask.run(adminId, "Invite 3 friends", 500);
+  insertTask.run(adminId, "Daily check-in", 50);
+  insertTask.run(adminId, "Share app", 200);
 
   const insertReward = db.prepare(`
     INSERT INTO rewards
@@ -169,8 +171,8 @@ if (!adminExists) {
     VALUES (?, ?, ?, ?)
   `);
 
-  insertReward.run(adminId, 'Welcome', 0, 1);
-  insertReward.run(adminId, 'VIP Bonus', 500, 0);
+  insertReward.run(adminId, "Welcome", 0, 1);
+  insertReward.run(adminId, "VIP Bonus", 500, 0);
 }
 
 module.exports = db;
