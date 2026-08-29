@@ -233,7 +233,20 @@ input{
 input:focus{
   border-color:#0757e8;
 }
+select{
+  width:100%;
+  padding:14px;
+  border:1px solid #dce2ea;
+  border-radius:12px;
+  margin-bottom:12px;
+  font-size:15px;
+  outline:none;
+  background:white;
+}
 
+select:focus{
+  border-color:#0757e8;
+}
 .form-button{
   width:100%;
   margin-top:5px;
@@ -305,7 +318,60 @@ input:focus{
   <button class="secondary" onclick="openModal('register')">Create Account</button>
 </div>
 
-  </section>  <section class="section">
+  </section> <section class="balance">
+  <small>💰 My Wallet</small>
+
+  <div class="amount" id="walletBalance">UGX 0</div>
+
+  <div class="actions">
+    <button class="primary" onclick="openWithdraw()">📤 Withdraw</button>
+    <button class="secondary" onclick="loadTransactions()">🧾 Transactions</button>
+  </div>
+
+  <div id="walletMessage"></div>
+</section>
+
+<section class="balance" id="withdrawSection" style="display:none;">
+  <small>📤 Withdraw Funds</small>
+
+  <input
+    type="number"
+    id="withdrawAmount"
+    placeholder="Amount (UGX)"
+    min="1"
+  >
+
+  <select id="withdrawNetwork">
+  <option value="">Select network</option>
+  <option value="MTN">MTN Mobile Money</option>
+  <option value="Airtel">Airtel Money</option>
+</select>
+
+<input
+  type="text"
+  id="withdrawAccount"
+  placeholder="Mobile Money phone number"
+>
+
+  <div class="actions">
+    <button class="primary" onclick="submitWithdrawal()">
+      Withdraw
+    </button>
+
+    <button class="secondary" onclick="closeWithdraw()">
+      Cancel
+    </button>
+  </div>
+
+  <div id="withdrawMessage"></div>
+</section>
+
+<section class="balance">
+  <small>🧾 Recent Transactions</small>
+  <div id="transactionsList">
+    No transactions yet.
+  </div>
+</section> <section class="section">
     <div class="section-title">
       <h2>Quick Access</h2>
     </div><div class="grid">
@@ -562,6 +628,132 @@ setTimeout(() => {
 
 }
 }
+async function loadWallet(){
+
+  const token = localStorage.getItem("casharrowToken");
+
+  if(!token) return;
+
+  try{
+
+    const response = await fetch("/api/wallet",{
+      headers:{
+        "Authorization":"Bearer " + token
+      }
+    });
+
+    const data = await response.json();
+
+    if(!response.ok || !data.success) return;
+
+    document.getElementById("walletBalance").textContent =
+      "UGX " + Number(data.wallet.balance).toLocaleString();
+
+  }catch(error){
+
+    console.log("Unable to load wallet.");
+
+  }
+}
+
+loadWallet(); 
+  function openWithdraw(){
+
+  const token = localStorage.getItem("casharrowToken");
+
+  if(!token){
+    openModal("login");
+    return;
+  }
+
+  document.getElementById("withdrawSection").style.display = "block";
+}
+
+function closeWithdraw(){
+
+  document.getElementById("withdrawSection").style.display = "none";
+
+  document.getElementById("withdrawMessage").textContent = "";
+
+}
+
+
+async function submitWithdrawal(){
+
+  const token = localStorage.getItem("casharrowToken");
+
+  if(!token){
+    openModal("login");
+    return;
+  }
+
+  const amount = Number(
+    document.getElementById("withdrawAmount").value
+  );
+
+  const network =
+    document.getElementById("withdrawNetwork").value;
+
+  const account =
+    document.getElementById("withdrawAccount").value.trim();
+
+  const message =
+    document.getElementById("withdrawMessage");
+
+  if(!network){
+    message.textContent = "Please select MTN or Airtel.";
+    return;
+  }
+
+  if(!amount || amount <= 0){
+    message.textContent = "Enter a valid withdrawal amount.";
+    return;
+  }
+
+  if(!account){
+    message.textContent = "Enter your Mobile Money number.";
+    return;
+  }
+
+  try{
+
+    const response = await fetch("/api/withdrawals",{
+      method:"POST",
+
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer " + token
+      },
+
+      body:JSON.stringify({
+        amount: amount,
+        account: network + " - " + account
+      })
+    });
+
+    const data = await response.json();
+
+    if(!response.ok || !data.success){
+      message.textContent =
+        data.message || "Withdrawal failed.";
+      return;
+    }
+
+    message.textContent =
+      "✅ Withdrawal request submitted successfully.";
+
+    document.getElementById("withdrawAmount").value = "";
+    document.getElementById("withdrawAccount").value = "";
+    document.getElementById("withdrawNetwork").value = "";
+
+  }catch(error){
+
+    message.textContent =
+      "Unable to connect to CashArrow server.";
+
+  }
+}
+
 
 window.onclick = function(event){
   if(event.target === modal){
