@@ -59,42 +59,85 @@ message: "CashArrow server is running"
 
 // Register
 app.post("/api/register", (req, res) => {
-const { phone, name, password } = req.body;
 
-if (!phone || !name || !password) {
-return res.status(400).json({
-success: false,
-message: "Name, phone and password are required"
-});
-}
+  const { phone, name, password, referralCode } = req.body;
 
-if (password.length < 6) {
-return res.status(400).json({
-success: false,
-message: "Password must be at least 6 characters"
-});
-}
+  if (!phone || !name || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Name, phone and password are required"
+    });
+  }
 
-const existingUser = db
-.prepare("SELECT id FROM users WHERE phone = ?")
-.get(phone);
+  if (password.length < 6) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must be at least 6 characters"
+    });
+  }
 
-if (existingUser) {
-return res.status(409).json({
-success: false,
-message: "An account with this phone already exists"
-});
-}
+  const existingUser = db
+    .prepare("SELECT id FROM users WHERE phone = ?")
+    .get(phone);
 
-const hash = bcrypt.hashSync(password, 10);
+  if (existingUser) {
+    return res.status(409).json({
+      success: false,
+      message: "An account with this phone already exists"
+    });
+  }
 
-const result = db.prepare("INSERT INTO users (phone, name, password) VALUES (?, ?, ?)").run(phone, name, hash);
+  let referrer = null;
 
-res.status(201).json({
-success: true,
-message: "Account created successfully",
-userId: result.lastInsertRowid
-});
+  if (referralCode) {
+    referrer = db
+      .prepare("SELECT id, name FROM users WHERE referral_code = ?")
+      .get(referralCode);
+  }
+
+  const hash = bcrypt.hashSync(password, 10);
+
+  const result = db.prepare(`
+    INSERT INTO users
+    (phone, name, password, referral_code, referred_by)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
+    phone,
+    name,
+    hash,
+    null,
+    referrer ? referrer.id : null
+  );
+
+  const newUserId = result.lastInsertRowid;
+
+  const newReferralCode =
+    "CA" + String(newUserId).padStart(6, "0");
+
+  db.prepare(`
+    UPDATE users
+    SET referral_code = ?
+    WHERE id = ?
+  `).run(newReferralCode, newUserId);
+
+  if (referrer) {
+    db.prepare(`
+      INSERT INTO team
+      (user_id, member_name, earn)
+      VALUES (?, ?, ?)
+    `).run(
+      referrer.id,
+      name,
+      0
+    );
+  }
+
+  res.status(201).json({
+    success: true,
+    message: "Account created successfully",
+    userId: newUserId,
+    referralCode: newReferralCode
+  });
 });
 
 // Login
