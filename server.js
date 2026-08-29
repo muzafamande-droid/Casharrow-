@@ -154,6 +154,30 @@ app.get("/api/admin", authenticateToken, requireAdmin, (req, res) => {
     }
   });
 });
+
+// Admin dashboard
+app.get("/api/admin/dashboard", authenticateToken, requireAdmin, (req, res) => {
+
+  const totalUsers = db
+    .prepare("SELECT COUNT(*) AS count FROM users")
+    .get().count;
+
+  const totalBalance = db
+    .prepare("SELECT COALESCE(SUM(balance), 0) AS total FROM users")
+    .get().total;
+
+  const totalTasks = db
+    .prepare("SELECT COUNT(*) AS count FROM tasks")
+    .get().count;
+
+  res.json({
+    success: true,
+    totalUsers,
+    totalBalance,
+    totalTasks
+  });
+});
+
 // Tasks
 app.get("/api/tasks", (req, res) => {
 const tasks = db.prepare("SELECT id, title, reward, done FROM tasks ORDER BY id DESC").all();
@@ -181,5 +205,5 @@ res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 app.listen(PORT, () => {
-console.log("CashArrow is running on port ${PORT}");
+  console.log(`CashArrow is running on port ${PORT}`);
 });
