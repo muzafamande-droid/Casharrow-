@@ -191,6 +191,97 @@ app.get("/api/admin/users", authenticateToken, requireAdmin, (req, res) => {
     users
   });
 });
+// My wallet
+app.get("/api/wallet", authenticateToken, (req, res) => {
+
+  const user = db.prepare(`
+    SELECT id, balance, wallet
+    FROM users
+    WHERE id = ?
+  `).get(req.user.id);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found"
+    });
+  }
+
+  res.json({
+    success: true,
+    wallet: {
+      balance: user.balance,
+      wallet: user.wallet
+    }
+  });
+});
+// My transactions
+app.get("/api/transactions", authenticateToken, (req, res) => {
+
+  const transactions = db.prepare(`
+    SELECT id, type, amount, date
+    FROM transactions
+    WHERE user_id = ?
+    ORDER BY id DESC
+  `).all(req.user.id);
+
+  res.json({
+    success: true,
+    transactions
+  });
+});
+// Create withdrawal request
+app.post("/api/withdrawals", authenticateToken, (req, res) => {
+
+  const { amount, account } = req.body;
+
+  if (!amount || !account) {
+    return res.status(400).json({
+      success: false,
+      message: "Amount and account are required"
+    });
+  }
+
+  const withdrawalAmount = Number(amount);
+
+  if (!Number.isFinite(withdrawalAmount) || withdrawalAmount <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid withdrawal amount"
+    });
+  }
+
+  const user = db.prepare(`
+    SELECT id, balance
+    FROM users
+    WHERE id = ?
+  `).get(req.user.id);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found"
+    });
+  }
+
+  if (withdrawalAmount > user.balance) {
+    return res.status(400).json({
+      success: false,
+      message: "Insufficient balance"
+    });
+  }
+
+  const result = db.prepare(`
+    INSERT INTO withdrawals (user_id, amount, account, status, date)
+    VALUES (?, ?, ?, 'pending', datetime('now'))
+  `).run(req.user.id, withdrawalAmount, account);
+
+  res.status(201).json({
+    success: true,
+    message: "Withdrawal request submitted",
+    withdrawalId: result.lastInsertRowid
+  });
+});
 // Tasks
 app.get("/api/tasks", (req, res) => {
 const tasks = db.prepare("SELECT id, title, reward, done FROM tasks ORDER BY id DESC").all();
