@@ -451,7 +451,47 @@ select:focus{
   <div class="reward">+UGX 200</div>
 </div>
 
-  </section></main><div class="modal" id="modal">
+    </section>
+
+<section class="balance" id="rewardsSection" style="display:none;">
+
+  <small>🎁 CashArrow Rewards</small>
+
+  <h2 style="margin:12px 0 8px;">Available Rewards</h2>
+
+  <p style="color:#7b8494;font-size:13px;margin-bottom:16px;">
+    Complete activities and earn CashArrow rewards.
+  </p>
+
+  <div class="task">
+    <div class="task-info">
+      <div class="task-icon">👥</div>
+      <div>
+        <strong>Invite a friend</strong>
+        <p style="font-size:12px;color:#7b8494">
+          Earn UGX 500
+        </p>
+      </div>
+    </div>
+    <div class="reward">+UGX 500</div>
+  </div>
+
+  <div class="task">
+    <div class="task-info">
+      <div class="task-icon">📅</div>
+      <div>
+        <strong>Daily check-in</strong>
+        <p style="font-size:12px;color:#7b8494">
+          Earn UGX 50
+        </p>
+      </div>
+    </div>
+    <div class="reward">+UGX 50</div>
+  </div>
+
+</section>
+
+</main><div class="modal" id="modal">
   <div class="modal-box"><button class="close" onclick="closeModal()">×</button>
 
 <div id="loginForm">
@@ -840,9 +880,17 @@ function goToRewards(){
 
   if(!requireLogin()) return;
 
-  alert("🎁 Rewards section is coming next.");
-}
+  const rewards = document.getElementById("rewardsSection");
 
+  if(rewards){
+    rewards.style.display = "block";
+
+    rewards.scrollIntoView({
+      behavior:"smooth",
+      block:"start"
+    });
+  }
+}
 function goToTasks(){
 
   if(!requireLogin()) return;
