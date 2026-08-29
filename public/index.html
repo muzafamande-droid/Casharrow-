@@ -528,11 +528,40 @@ select:focus{
   </div>
 
   <button
-    class="primary"
-    style="width:100%;margin-top:8px;"
-    onclick="alert('Referral sharing will be added next.')">
-    👥 Invite Friends
-  </button>
+  class="primary"
+  style="width:100%;margin-top:8px;"
+  onclick="openInvite()">
+  👥 Invite Friends
+</button>
+
+<div id="inviteBox" style="display:none;margin-top:15px;">
+
+  <p style="font-size:13px;color:#7b8494;margin-bottom:8px;">
+    Share your CashArrow referral link:
+  </p>
+
+  <input
+    type="text"
+    id="referralLink"
+    readonly
+    style="margin-bottom:8px;"
+  >
+
+  <div class="actions">
+    <button class="secondary" onclick="copyReferral()">
+      📋 Copy Link
+    </button>
+
+    <button class="primary" onclick="shareReferral()">
+      📤 Share
+    </button>
+  </div>
+
+  <div id="referralMessage"
+       style="font-size:13px;margin-top:10px;color:#0a8f52;">
+  </div>
+
+</div>
 
 </section>
 
@@ -964,6 +993,75 @@ function goToTeam(){
       behavior:"smooth",
       block:"start"
     });
+  }
+}
+
+function openInvite(){
+
+  if(!requireLogin()) return;
+
+  const user = JSON.parse(
+    localStorage.getItem("casharrowUser")
+  );
+
+  if(!user) return;
+
+  const referralCode =
+    "CA" + String(user.id || user.phone)
+    .replace(/\D/g,"")
+    .slice(-6);
+
+  const referralLink =
+    window.location.origin + "/?ref=" + referralCode;
+
+  document.getElementById("referralLink").value =
+    referralLink;
+
+  document.getElementById("inviteBox").style.display =
+    "block";
+}
+
+function copyReferral(){
+
+  const link =
+    document.getElementById("referralLink").value;
+
+  navigator.clipboard.writeText(link).then(() => {
+
+    alert("✅ Referral link copied!");
+
+  }).catch(() => {
+
+    alert("Please copy the referral link manually.");
+
+  });
+}
+
+async function shareReferral(){
+
+  const link =
+    document.getElementById("referralLink").value;
+
+  if(navigator.share){
+
+    try{
+
+      await navigator.share({
+        title:"Join CashArrow",
+        text:"Join me on CashArrow!",
+        url:link
+      });
+
+    }catch(error){
+
+      console.log("Share cancelled.");
+
+    }
+
+  }else{
+
+    copyReferral();
+
   }
 }
 
