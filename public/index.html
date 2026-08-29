@@ -540,8 +540,16 @@ if(data.success){
 
   showMessage("loginMessage","Login successful! Welcome, " + data.user.name);
 
-  setTimeout(closeModal,1200);
+  
+setTimeout(() => {
 
+  if (data.user.role === "admin") {
+    window.location.href = "/admin.html";
+  } else {
+    closeModal();
+  }
+
+}, 1200);
 }else{
 
   showMessage("loginMessage",data.message || "Login failed.");
