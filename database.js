@@ -71,7 +71,13 @@ db.exec(`
 
 const adminExists = db.prepare('SELECT id FROM users WHERE role = ?').get('admin');
 if (!adminExists) {
-  const hash = bcrypt.hashSync('admin123', 10);
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+if (!adminPassword) {
+  throw new Error('ADMIN_PASSWORD environment variable is not configured');
+}
+
+const hash = bcrypt.hashSync(adminPassword, 12);
   const info = db.prepare(`
     INSERT INTO users (phone, name, password, role, balance, vip)
     VALUES (?, ?, ?, ?, ?, ?)
