@@ -328,28 +328,53 @@ app.post("/api/withdrawals", authenticateToken, (req, res) => {
 });
 // Tasks
 app.get("/api/tasks", (req, res) => {
-const tasks = db.prepare("SELECT id, title, reward, done FROM tasks ORDER BY id DESC").all();
+  const tasks = db
+    .prepare("SELECT id, title, reward, done FROM tasks ORDER BY id DESC")
+    .all();
 
-res.json({
-success: true,
-tasks
+  res.json({
+    success: true,
+    tasks
+  });
 });
-});
-
 
 // Rewards
 app.get("/api/rewards", (req, res) => {
-const rewards = db.prepare("SELECT id, title, amount, claimed FROM rewards ORDER BY id DESC").all();
+  const rewards = db
+    .prepare("SELECT id, title, amount, claimed FROM rewards ORDER BY id DESC")
+    .all();
 
-res.json({
-success: true,
-rewards
+  res.json({
+    success: true,
+    rewards
+  });
 });
+
+// Team
+app.get("/api/team", authenticateToken, (req, res) => {
+
+  const members = db.prepare(`
+    SELECT member_name, earn
+    FROM team
+    WHERE user_id = ?
+  `).all(req.user.id);
+
+  const earnings = members.reduce(
+    (total, member) => total + Number(member.earn || 0),
+    0
+  );
+
+  res.json({
+    success: true,
+    members,
+    memberCount: members.length,
+    earnings
+  });
 });
 
 // Website
 app.get("*", (req, res) => {
-res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 app.listen(PORT, () => {
