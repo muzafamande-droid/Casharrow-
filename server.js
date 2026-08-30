@@ -127,7 +127,7 @@ app.post("/api/register", (req, res) => {
 
   if (referrer) {
 
-    const referralReward = 5000;
+  const referralReward = 5000;
 
     db.prepare(`
       INSERT INTO team
