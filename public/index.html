@@ -1,8 +1,12 @@
-<!DOCTYPE html><html lang="en">
+
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CashArrow</title><style>
+<title>CashArrow</title>
+
+<style>
 *{box-sizing:border-box;margin:0;padding:0}
 
 body{
@@ -233,6 +237,7 @@ input{
 input:focus{
   border-color:#0757e8;
 }
+
 select{
   width:100%;
   padding:14px;
@@ -247,6 +252,7 @@ select{
 select:focus{
   border-color:#0757e8;
 }
+
 .form-button{
   width:100%;
   margin-top:5px;
@@ -303,22 +309,41 @@ select:focus{
   font-size:20px;
   margin-bottom:3px;
 }
-</style></head><body><header class="header">
+</style>
+</head>
+
+<body>
+
+<header class="header">
+
   <div class="top">
     <div class="logo">🏹 CashArrow</div>
     <div class="bell">🔔</div>
-  </div>  <div class="greeting">
-  <p id="welcomeText">Welcome to your financial journey</p>
-  <h1 id="welcomeName">CashArrow 👋</h1>
-</div>
-</header><main class="container">  <section class="balance">
+  </div>
+
+  <div class="greeting">
+    <p id="welcomeText">Welcome to your financial journey</p>
+    <h1 id="welcomeName">CashArrow 👋</h1>
+  </div>
+
+</header>
+
+<main class="container">
+
+<section class="balance">
+
   <small>Total Balance</small>
 
   <div class="amount">UGX 0</div>
 
   <div class="actions" id="guestActions">
-    <button class="primary" onclick="openModal('login')">Login</button>
-    <button class="secondary" onclick="openModal('register')">Create Account</button>
+    <button class="primary" onclick="openModal('login')">
+      Login
+    </button>
+
+    <button class="secondary" onclick="openModal('register')">
+      Create Account
+    </button>
   </div>
 
 </section>
@@ -327,17 +352,28 @@ select:focus{
 
   <small>💰 My Wallet</small>
 
-  <div class="amount" id="walletBalance">UGX 0</div>
+  <div class="amount" id="walletBalance">
+    UGX 0
+  </div>
 
   <div class="actions">
-    <button class="primary" onclick="openWithdraw()">📤 Withdraw</button>
-    <button class="secondary" onclick="loadTransactions()">🧾 Transactions</button>
+
+    <button class="primary" onclick="openWithdraw()">
+      📤 Withdraw
+    </button>
+
+    <button class="secondary" onclick="loadTransactions()">
+      🧾 Transactions
+    </button>
+
   </div>
 
   <div id="walletMessage"></div>
 
 </section>
+
 <section class="balance" id="withdrawSection" style="display:none;">
+
   <small>📤 Withdraw Funds</small>
 
   <input
@@ -348,18 +384,27 @@ select:focus{
   >
 
   <select id="withdrawNetwork">
-  <option value="">Select network</option>
-  <option value="MTN">MTN Mobile Money</option>
-  <option value="Airtel">Airtel Money</option>
-</select>
 
-<input
-  type="text"
-  id="withdrawAccount"
-  placeholder="Mobile Money phone number"
->
+    <option value="">Select network</option>
 
-    <div class="actions">
+    <option value="MTN">
+      MTN Mobile Money
+    </option>
+
+    <option value="Airtel">
+      Airtel Money
+    </option>
+
+  </select>
+
+  <input
+    type="text"
+    id="withdrawAccount"
+    placeholder="Mobile Money phone number"
+  >
+
+  <div class="actions">
+
     <button class="primary" onclick="submitWithdrawal()">
       Withdraw
     </button>
@@ -367,16 +412,21 @@ select:focus{
     <button class="secondary" onclick="closeWithdraw()">
       Cancel
     </button>
+
   </div>
 
   <div id="withdrawMessage"></div>
 
 </section>
+
 <section class="balance" id="userTransactions" style="display:none;">
+
   <small>🧾 Recent Transactions</small>
+
   <div id="transactionsList">
     No transactions yet.
   </div>
+
 </section>
 
 <section class="section">
@@ -384,27 +434,51 @@ select:focus{
   <div class="grid">
 
     <div class="card" onclick="goToWallet()">
+
       <div class="icon">💰</div>
+
       <h3>Wallet</h3>
-      <p>View your balance and transactions.</p>
+
+      <p>
+        View your balance and transactions.
+      </p>
+
     </div>
 
     <div class="card" onclick="goToRewards()">
+
       <div class="icon">🎁</div>
+
       <h3>Rewards</h3>
-      <p>Explore available rewards.</p>
+
+      <p>
+        Explore available rewards.
+      </p>
+
     </div>
 
     <div class="card" onclick="goToTasks()">
+
       <div class="icon">🎯</div>
+
       <h3>Tasks</h3>
-      <p>Complete tasks and track your progress.</p>
+
+      <p>
+        Complete tasks and track your progress.
+      </p>
+
     </div>
 
     <div class="card" onclick="goToTeam()">
+
       <div class="icon">👥</div>
+
       <h3>My Team</h3>
-      <p>Build and manage your team.</p>
+
+      <p>
+        Build and manage your team.
+      </p>
+
     </div>
 
   </div>
@@ -412,81 +486,143 @@ select:focus{
 </section>
 
 <section class="section" id="todayTasks">
+
   <div class="section-title">
     <h2>Today's Tasks</h2>
   </div>
 
   <div class="task">
+
     <div class="task-info">
+
       <div class="task-icon">👥</div>
+
       <div>
+
         <strong>Invite friends</strong>
-        <p style="font-size:12px;color:#7b8494">Grow your network</p>
+
+        <p style="font-size:12px;color:#7b8494">
+          Grow your network
+        </p>
+
       </div>
+
     </div>
 
-    <div class="reward">+UGX 500</div>
+    <div class="reward">
+      +UGX 500
+    </div>
+
   </div>
 
   <div class="task">
+
     <div class="task-info">
+
       <div class="task-icon">📅</div>
+
       <div>
+
         <strong>Daily check-in</strong>
-        <p style="font-size:12px;color:#7b8494">Check in today</p>
+
+        <p style="font-size:12px;color:#7b8494">
+          Check in today
+        </p>
+
       </div>
+
     </div>
 
-    <div class="reward">+UGX 50</div>
-  </div>
-
-<div class="task">
-  <div class="task-info">
-    <div class="task-icon">📤</div>
-    <div>
-      <strong>Share CashArrow</strong>
-      <p style="font-size:12px;color:#7b8494">Share with friends</p>
+    <div class="reward">
+      +UGX 50
     </div>
-  </div>
-  <div class="reward">+UGX 200</div>
-</div>
 
-    </section>
+  </div>
+
+  <div class="task">
+
+    <div class="task-info">
+
+      <div class="task-icon">📤</div>
+
+      <div>
+
+        <strong>Share CashArrow</strong>
+
+        <p style="font-size:12px;color:#7b8494">
+          Share with friends
+        </p>
+
+      </div>
+
+    </div>
+
+    <div class="reward">
+      +UGX 200
+    </div>
+
+  </div>
+
+</section>
 
 <section class="balance" id="rewardsSection" style="display:none;">
 
   <small>🎁 CashArrow Rewards</small>
 
-  <h2 style="margin:12px 0 8px;">Available Rewards</h2>
+  <h2 style="margin:12px 0 8px;">
+    Available Rewards
+  </h2>
 
   <p style="color:#7b8494;font-size:13px;margin-bottom:16px;">
     Complete activities and earn CashArrow rewards.
   </p>
 
   <div class="task">
+
     <div class="task-info">
+
       <div class="task-icon">👥</div>
+
       <div>
+
         <strong>Invite a friend</strong>
+
         <p style="font-size:12px;color:#7b8494">
           Earn UGX 500
         </p>
+
       </div>
+
     </div>
-    <div class="reward">+UGX 500</div>
+
+    <div class="reward">
+      +UGX 500
+    </div>
+
   </div>
 
   <div class="task">
+
     <div class="task-info">
+
       <div class="task-icon">📅</div>
+
       <div>
+
         <strong>Daily check-in</strong>
+
         <p style="font-size:12px;color:#7b8494">
           Earn UGX 50
         </p>
+
       </div>
+
     </div>
-    <div class="reward">+UGX 50</div>
+
+    <div class="reward">
+      +UGX 50
+    </div>
+
   </div>
 
 </section>
@@ -495,138 +631,262 @@ select:focus{
 
   <small>👥 My Team</small>
 
-  <h2 style="margin:12px 0 8px;">Build Your Team</h2>
+  <h2 style="margin:12px 0 8px;">
+    Build Your Team
+  </h2>
 
   <p style="color:#7b8494;font-size:13px;margin-bottom:16px;">
     Invite friends and grow your CashArrow team.
   </p>
 
   <div class="task">
+
     <div class="task-info">
+
       <div class="task-icon">👥</div>
+
       <div>
+
         <strong>Team Members</strong>
+
         <p style="font-size:12px;color:#7b8494">
           People you've invited
         </p>
+
       </div>
+
     </div>
-    <div class="reward">0</div>
+
+    <div class="reward team-member-count">
+      0
+    </div>
+
   </div>
 
   <div class="task">
+
     <div class="task-info">
+
       <div class="task-icon">💰</div>
+
       <div>
+
         <strong>Team Earnings</strong>
+
         <p style="font-size:12px;color:#7b8494">
           Earnings from your team
         </p>
+
       </div>
+
     </div>
-    <div class="reward">UGX 0</div>
+
+    <div class="reward team-earnings">
+      UGX 0
+    </div>
+
   </div>
 
   <button
-  class="primary"
-  style="width:100%;margin-top:8px;"
-  onclick="openInvite()">
-  👥 Invite Friends
-</button>
+    class="primary"
+    style="width:100%;margin-top:8px;"
+    onclick="openInvite()"
+  >
+    👥 Invite Friends
+  </button>
 
-<div id="inviteBox" style="display:none;margin-top:15px;">
-
-  <p style="font-size:13px;color:#7b8494;margin-bottom:8px;">
-    Share your CashArrow referral link:
-  </p>
-
-  <input
-    type="text"
-    id="referralLink"
-    readonly
-    style="margin-bottom:8px;"
+  <div
+    id="inviteBox"
+    style="display:none;margin-top:15px;"
   >
 
-  <div class="actions">
-    <button class="secondary" onclick="copyReferral()">
-      📋 Copy Link
-    </button>
+    <p style="font-size:13px;color:#7b8494;margin-bottom:8px;">
+      Share your CashArrow referral link:
+    </p>
 
-    <button class="primary" onclick="shareReferral()">
-      📤 Share
-    </button>
+    <input
+      type="text"
+      id="referralLink"
+      readonly
+      style="margin-bottom:8px;"
+    >
+
+    <div class="actions">
+
+      <button
+        class="secondary"
+        onclick="copyReferral()"
+      >
+        📋 Copy Link
+      </button>
+
+      <button
+        class="primary"
+        onclick="shareReferral()"
+      >
+        📤 Share
+      </button>
+
+    </div>
+
+    <div
+      id="referralMessage"
+      style="font-size:13px;margin-top:10px;color:#0a8f52;"
+    ></div>
+
   </div>
-
-  <div id="referralMessage"
-       style="font-size:13px;margin-top:10px;color:#0a8f52;">
-  </div>
-
-</div>
 
 </section>
 
-</main><div class="modal" id="modal">
+</main>
 
-  <div class="modal-box"><button class="close" onclick="closeModal()">×</button>
+<div class="modal" id="modal">
 
-<div id="loginForm">
+  <div class="modal-box">
 
-  <h2>Welcome Back 👋</h2>
-  <p class="subtitle">Login to your CashArrow account</p>
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
 
-  <div class="message" id="loginMessage"></div>
+    <div id="loginForm">
 
-  <input id="loginPhone" type="text" placeholder="Phone number">
-  <input id="loginPassword" type="password" placeholder="Password">
+      <h2>Welcome Back 👋</h2>
 
-  <button class="primary form-button" onclick="login()">Login</button>
+      <p class="subtitle">
+        Login to your CashArrow account
+      </p>
 
-  <div class="switch">
-    Don't have an account?
-    <span onclick="showRegister()">Create one</span>
+      <div
+        class="message"
+        id="loginMessage"
+      ></div>
+
+      <input
+        id="loginPhone"
+        type="text"
+        placeholder="Phone number"
+      >
+
+      <input
+        id="loginPassword"
+        type="password"
+        placeholder="Password"
+      >
+
+      <button
+        class="primary form-button"
+        onclick="login()"
+      >
+        Login
+      </button>
+
+      <div class="switch">
+        Don't have an account?
+        <span onclick="showRegister()">
+          Create one
+        </span>
+      </div>
+
+    </div>
+
+    <div
+      id="registerForm"
+      style="display:none"
+    >
+
+      <h2>Create Account 🚀</h2>
+
+      <p class="subtitle">
+        Join CashArrow today
+      </p>
+
+      <div
+        class="message"
+        id="registerMessage"
+      ></div>
+
+      <input
+        id="registerName"
+        type="text"
+        placeholder="Full name"
+      >
+
+      <input
+        id="registerPhone"
+        type="text"
+        placeholder="Phone number"
+      >
+
+      <input
+        id="registerPassword"
+        type="password"
+        placeholder="Password (6+ characters)"
+      >
+
+      <button
+        class="primary form-button"
+        onclick="register()"
+      >
+        Create Account
+      </button>
+
+      <div class="switch">
+        Already have an account?
+        <span onclick="showLogin()">
+          Login
+        </span>
+      </div>
+
+    </div>
+
   </div>
 
 </div>
 
-<div id="registerForm" style="display:none">
+<nav class="bottom">
 
-  <h2>Create Account 🚀</h2>
-  <p class="subtitle">Join CashArrow today</p>
-
-  <div class="message" id="registerMessage"></div>
-
-  <input id="registerName" type="text" placeholder="Full name">
-  <input id="registerPhone" type="text" placeholder="Phone number">
-  <input id="registerPassword" type="password" placeholder="Password (6+ characters)">
-
-  <button class="primary form-button" onclick="register()">Create Account</button>
-
-  <div class="switch">
-    Already have an account?
-    <span onclick="showLogin()">Login</span>
-  </div>
-
-</div>
-
-  </div>
-</div><nav class="bottom">
   <div class="nav active">
     <div>🏠</div>
     Home
-  </div>  <div class="nav">
+  </div>
+
+  <div
+    class="nav"
+    onclick="goToTasks()"
+  >
     <div>🎯</div>
     Tasks
-  </div>  <div class="nav">
+  </div>
+
+  <div
+    class="nav"
+    onclick="goToWallet()"
+  >
     <div>💰</div>
     Wallet
-  </div>  <div class="nav">
+  </div>
+
+  <div
+    class="nav"
+    onclick="openModal('login')"
+  >
     <div>👤</div>
     Account
   </div>
-</nav><script>
-const modal = document.getElementById("modal");
+
+</nav>
+
+<script>
+
+const modal =
+  document.getElementById("modal");
+
 
 function openModal(type){
+
   modal.style.display = "flex";
 
   if(type === "register"){
@@ -634,261 +894,490 @@ function openModal(type){
   }else{
     showLogin();
   }
+
 }
+
 
 function closeModal(){
+
   modal.style.display = "none";
+
 }
+
 
 function showLogin(){
-  document.getElementById("loginForm").style.display = "block";
-  document.getElementById("registerForm").style.display = "none";
+
+  document.getElementById("loginForm").style.display =
+    "block";
+
+  document.getElementById("registerForm").style.display =
+    "none";
+
   clearMessages();
+
 }
+
 
 function showRegister(){
-  document.getElementById("loginForm").style.display = "none";
-  document.getElementById("registerForm").style.display = "block";
+
+  document.getElementById("loginForm").style.display =
+    "none";
+
+  document.getElementById("registerForm").style.display =
+    "block";
+
   clearMessages();
+
 }
+
 
 function clearMessages(){
-  document.getElementById("loginMessage").style.display = "none";
-  document.getElementById("registerMessage").style.display = "none";
+
+  document.getElementById("loginMessage").style.display =
+    "none";
+
+  document.getElementById("registerMessage").style.display =
+    "none";
+
 }
 
+
 function showMessage(id,text){
-  const box = document.getElementById(id);
+
+  const box =
+    document.getElementById(id);
+
   box.textContent = text;
+
   box.style.display = "block";
+
 }
+
+
+/*
+  REGISTER
+*/
 
 async function register(){
 
-  const name = document.getElementById("registerName").value.trim();
-  const phone = document.getElementById("registerPhone").value.trim();
-  const password = document.getElementById("registerPassword").value;
+  const name =
+    document.getElementById("registerName").value.trim();
+
+  const phone =
+    document.getElementById("registerPhone").value.trim();
+
+  const password =
+    document.getElementById("registerPassword").value;
 
   if(!name || !phone || !password){
-    showMessage("registerMessage","Please fill in all fields.");
+
+    showMessage(
+      "registerMessage",
+      "Please fill in all fields."
+    );
+
     return;
   }
 
+  /*
+    Get referral code from the URL.
+    Example:
+    /?ref=CA000001
+  */
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const referralCode =
+    params.get("ref");
+
   try{
 
-    const response = await fetch("/api/register",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({
-        name,
-        phone,
-        password
-      })
-    });
+    const response =
+      await fetch("/api/register",{
 
-    const data = await response.json();
+        method:"POST",
+
+        headers:{
+          "Content-Type":"application/json"
+        },
+
+        body:JSON.stringify({
+
+          name,
+          phone,
+          password,
+          referralCode
+
+        })
+
+      });
+
+    const data =
+      await response.json();
 
     if(data.success){
-      showMessage("registerMessage","Account created successfully! You can now login.");
-      setTimeout(showLogin,1200);
+
+      showMessage(
+        "registerMessage",
+        "Account created successfully! You can now login."
+      );
+
+      setTimeout(
+        showLogin,
+        1200
+      );
+
     }else{
-      showMessage("registerMessage",data.message || "Registration failed.");
+
+      showMessage(
+        "registerMessage",
+        data.message ||
+        "Registration failed."
+      );
+
     }
 
   }catch(error){
-    showMessage("registerMessage","Unable to connect to CashArrow server.");
+
+    showMessage(
+      "registerMessage",
+      "Unable to connect to CashArrow server."
+    );
+
   }
+
 }
+
+
+/*
+  LOGIN
+*/
 
 async function login(){
 
-  const phone = document.getElementById("loginPhone").value.trim();
-  const password = document.getElementById("loginPassword").value;
+  const phone =
+    document.getElementById("loginPhone").value.trim();
+
+  const password =
+    document.getElementById("loginPassword").value;
 
   if(!phone || !password){
-    showMessage("loginMessage","Please enter your phone and password.");
+
+    showMessage(
+      "loginMessage",
+      "Please enter your phone and password."
+    );
+
     return;
   }
 
   try{
 
-    const response = await fetch("/api/login",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({
-        phone,
-        password
-      })
-    });
+    const response =
+      await fetch("/api/login",{
 
-    const data = await response.json();
+        method:"POST",
 
-if(data.success){
+        headers:{
+          "Content-Type":"application/json"
+        },
 
-  localStorage.setItem("casharrowToken", data.token);
-  localStorage.setItem("casharrowUser", JSON.stringify(data.user));
+        body:JSON.stringify({
+          phone,
+          password
+        })
 
-  showMessage("loginMessage","Login successful! Welcome, " + data.user.name);
+      });
 
-  
-setTimeout(() => {
+    const data =
+      await response.json();
 
-  if (data.user.role === "admin") {
+    if(data.success){
 
-    window.location.href = "/admin.html";
+      localStorage.setItem(
+        "casharrowToken",
+        data.token
+      );
 
-  } else {
+      localStorage.setItem(
+        "casharrowUser",
+        JSON.stringify(data.user)
+      );
 
-    closeModal();
+      showMessage(
+        "loginMessage",
+        "Login successful! Welcome, " +
+        data.user.name
+      );
 
-    document.getElementById("guestActions").style.display = "none";
+      setTimeout(() => {
 
-document.getElementById("userWallet").style.display = "block";
+        if(data.user.role === "admin"){
 
-document.getElementById("userTransactions").style.display = "block";
+          window.location.href =
+            "/admin.html";
 
-document.getElementById("welcomeText").textContent =
-  "Welcome back";
+        }else{
 
-document.getElementById("welcomeName").textContent =
-  data.user.name + " 👋";
+          closeModal();
 
-loadWallet();
+          document.getElementById(
+            "guestActions"
+          ).style.display = "none";
+
+          document.getElementById(
+            "userWallet"
+          ).style.display = "block";
+
+          document.getElementById(
+            "userTransactions"
+          ).style.display = "block";
+
+          document.getElementById(
+            "welcomeText"
+          ).textContent =
+            "Welcome back";
+
+          document.getElementById(
+            "welcomeName"
+          ).textContent =
+            data.user.name + " 👋";
+
+          loadWallet();
+
+        }
+
+      },1200);
+
+    }else{
+
+      showMessage(
+        "loginMessage",
+        data.message || "Login failed."
+      );
+
+    }
+
+  }catch(error){
+
+    showMessage(
+      "loginMessage",
+      "Unable to connect to CashArrow server."
+    );
 
   }
 
-}, 1200);
-}else{
-
-  showMessage("loginMessage",data.message || "Login failed.");
-
 }
 
-}catch(error){
 
-  showMessage("loginMessage","Unable to connect to CashArrow server.");
+/*
+  LOAD WALLET
+*/
 
-}
-}
 async function loadWallet(){
 
-  const token = localStorage.getItem("casharrowToken");
+  const token =
+    localStorage.getItem(
+      "casharrowToken"
+    );
 
   if(!token) return;
 
   try{
 
-    const response = await fetch("/api/wallet",{
-      headers:{
-        "Authorization":"Bearer " + token
-      }
-    });
+    const response =
+      await fetch("/api/wallet",{
 
-    const data = await response.json();
+        headers:{
+          "Authorization":
+            "Bearer " + token
+        }
 
-    if(!response.ok || !data.success) return;
+      });
 
-    document.getElementById("walletBalance").textContent =
-      "UGX " + Number(data.wallet.balance).toLocaleString();
+    const data =
+      await response.json();
+
+    if(!response.ok || !data.success)
+      return;
+
+    document.getElementById(
+      "walletBalance"
+    ).textContent =
+      "UGX " +
+      Number(
+        data.wallet.balance
+      ).toLocaleString();
 
   }catch(error){
 
-    console.log("Unable to load wallet.");
+    console.log(
+      "Unable to load wallet."
+    );
 
   }
-}
-  function openWithdraw(){
 
-  const token = localStorage.getItem("casharrowToken");
+}
+
+
+/*
+  WITHDRAW
+*/
+
+function openWithdraw(){
+
+  const token =
+    localStorage.getItem(
+      "casharrowToken"
+    );
 
   if(!token){
+
     openModal("login");
+
     return;
   }
 
-  document.getElementById("withdrawSection").style.display = "block";
+  document.getElementById(
+    "withdrawSection"
+  ).style.display = "block";
+
 }
+
 
 function closeWithdraw(){
 
-  document.getElementById("withdrawSection").style.display = "none";
+  document.getElementById(
+    "withdrawSection"
+  ).style.display = "none";
 
-  document.getElementById("withdrawMessage").textContent = "";
+  document.getElementById(
+    "withdrawMessage"
+  ).textContent = "";
 
 }
 
 
 async function submitWithdrawal(){
 
-  const token = localStorage.getItem("casharrowToken");
+  const token =
+    localStorage.getItem(
+      "casharrowToken"
+    );
 
   if(!token){
+
     openModal("login");
+
     return;
   }
 
-  const amount = Number(
-    document.getElementById("withdrawAmount").value
-  );
+  const amount =
+    Number(
+      document.getElementById(
+        "withdrawAmount"
+      ).value
+    );
 
   const network =
-    document.getElementById("withdrawNetwork").value;
+    document.getElementById(
+      "withdrawNetwork"
+    ).value;
 
   const account =
-    document.getElementById("withdrawAccount").value.trim();
+    document.getElementById(
+      "withdrawAccount"
+    ).value.trim();
 
   const message =
-    document.getElementById("withdrawMessage");
+    document.getElementById(
+      "withdrawMessage"
+    );
 
   if(!network){
-    message.textContent = "Please select MTN or Airtel.";
+
+    message.textContent =
+      "Please select MTN or Airtel.";
+
     return;
   }
 
   if(!amount || amount <= 0){
-    message.textContent = "Enter a valid withdrawal amount.";
+
+    message.textContent =
+      "Enter a valid withdrawal amount.";
+
     return;
   }
 
   if(!account){
-    message.textContent = "Enter your Mobile Money number.";
+
+    message.textContent =
+      "Enter your Mobile Money number.";
+
     return;
   }
 
   try{
 
-    const response = await fetch("/api/withdrawals",{
-      method:"POST",
+    const response =
+      await fetch(
+        "/api/withdrawals",
+        {
 
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer " + token
-      },
+          method:"POST",
 
-      body:JSON.stringify({
-        amount: amount,
-        account: network + " - " + account
-      })
-    });
+          headers:{
+            "Content-Type":
+              "application/json",
 
-    const data = await response.json();
+            "Authorization":
+              "Bearer " + token
+          },
+
+          body:JSON.stringify({
+
+            amount:amount,
+
+            account:
+              network + " - " + account
+
+          })
+
+        }
+      );
+
+    const data =
+      await response.json();
 
     if(!response.ok || !data.success){
+
       message.textContent =
-        data.message || "Withdrawal failed.";
+        data.message ||
+        "Withdrawal failed.";
+
       return;
     }
 
     message.textContent =
       "✅ Withdrawal request submitted successfully.";
 
-    document.getElementById("withdrawAmount").value = "";
-    document.getElementById("withdrawAccount").value = "";
-    document.getElementById("withdrawNetwork").value = "";
+    document.getElementById(
+      "withdrawAmount"
+    ).value = "";
+
+    document.getElementById(
+      "withdrawAccount"
+    ).value = "";
+
+    document.getElementById(
+      "withdrawNetwork"
+    ).value = "";
+
+    loadWallet();
 
   }catch(error){
 
@@ -896,165 +1385,475 @@ async function submitWithdrawal(){
       "Unable to connect to CashArrow server.";
 
   }
+
 }
 
-window.onclick = function(event){
-  if(event.target === modal){
-    closeModal();
+
+/*
+  TRANSACTIONS
+*/
+
+async function loadTransactions(){
+
+  if(!requireLogin()) return;
+
+  const token =
+    localStorage.getItem(
+      "casharrowToken"
+    );
+
+  try{
+
+    const response =
+      await fetch(
+        "/api/transactions",
+        {
+          headers:{
+            "Authorization":
+              "Bearer " + token
+          }
+        }
+      );
+
+    const data =
+      await response.json();
+
+    const list =
+      document.getElementById(
+        "transactionsList"
+      );
+
+    if(!data.success){
+
+      list.textContent =
+        "Unable to load transactions.";
+
+      return;
+    }
+
+    if(!data.transactions ||
+       data.transactions.length === 0){
+
+      list.textContent =
+        "No transactions yet.";
+
+      return;
+    }
+
+    list.innerHTML =
+      data.transactions.map(
+        transaction => `
+
+          <div style="
+            padding:12px 0;
+            border-bottom:1px solid #eee;
+          ">
+
+            <strong>
+              ${transaction.type}
+            </strong>
+
+            <div style="
+              color:#0a8f52;
+              font-weight:bold;
+            ">
+              UGX ${Number(
+                transaction.amount
+              ).toLocaleString()}
+            </div>
+
+          </div>
+
+        `
+      ).join("");
+
+  }catch(error){
+
+    console.log(
+      "Unable to load transactions."
+    );
+
   }
+
 }
 
-const savedUser = localStorage.getItem("casharrowUser");
+
+/*
+  AUTO LOGIN
+*/
+
+const savedUser =
+  localStorage.getItem(
+    "casharrowUser"
+  );
 
 if(savedUser){
-  const user = JSON.parse(savedUser);
 
-  if(user.role !== "admin"){
-    document.getElementById("guestActions").style.display = "none";
-    document.getElementById("userWallet").style.display = "block";
-    document.getElementById("userTransactions").style.display = "block";
+  try{
 
-    document.getElementById("welcomeText").textContent =
-      "Welcome back";
+    const user =
+      JSON.parse(savedUser);
 
-    document.getElementById("welcomeName").textContent =
-      user.name + " 👋";
+    if(user.role !== "admin"){
 
-    loadWallet();
+      document.getElementById(
+        "guestActions"
+      ).style.display = "none";
+
+      document.getElementById(
+        "userWallet"
+      ).style.display = "block";
+
+      document.getElementById(
+        "userTransactions"
+      ).style.display = "block";
+
+      document.getElementById(
+        "welcomeText"
+      ).textContent =
+        "Welcome back";
+
+      document.getElementById(
+        "welcomeName"
+      ).textContent =
+        user.name + " 👋";
+
+      loadWallet();
+
+    }
+
+  }catch(error){
+
+    localStorage.removeItem(
+      "casharrowUser"
+    );
+
+    localStorage.removeItem(
+      "casharrowToken"
+    );
+
   }
+
 }
+
+
+/*
+  LOGIN CHECK
+*/
 
 function requireLogin(){
 
-  const token = localStorage.getItem("casharrowToken");
+  const token =
+    localStorage.getItem(
+      "casharrowToken"
+    );
 
   if(!token){
+
     openModal("login");
+
     return false;
   }
 
   return true;
+
 }
+
+
+/*
+  WALLET
+*/
 
 function goToWallet(){
 
   if(!requireLogin()) return;
 
-  document.getElementById("userWallet").style.display = "block";
-  document.getElementById("userTransactions").style.display = "block";
+  document.getElementById(
+    "userWallet"
+  ).style.display = "block";
 
-  document.getElementById("userWallet").scrollIntoView({
+  document.getElementById(
+    "userTransactions"
+  ).style.display = "block";
+
+  document.getElementById(
+    "userWallet"
+  ).scrollIntoView({
+
     behavior:"smooth",
+
     block:"start"
+
   });
 
   loadWallet();
+
 }
+
+
+/*
+  REWARDS
+*/
 
 function goToRewards(){
 
   if(!requireLogin()) return;
 
-  const rewards = document.getElementById("rewardsSection");
+  const rewards =
+    document.getElementById(
+      "rewardsSection"
+    );
 
   if(rewards){
-    rewards.style.display = "block";
+
+    rewards.style.display =
+      "block";
 
     rewards.scrollIntoView({
+
       behavior:"smooth",
+
       block:"start"
+
     });
+
   }
+
 }
+
+
+/*
+  TASKS
+*/
+
 function goToTasks(){
 
   if(!requireLogin()) return;
 
-  const tasks = document.getElementById("todayTasks");
+  const tasks =
+    document.getElementById(
+      "todayTasks"
+    );
 
   if(tasks){
+
     tasks.scrollIntoView({
+
       behavior:"smooth",
+
       block:"start"
+
     });
+
   }
+
 }
 
-function goToTeam(){
+
+/*
+  TEAM
+*/
+
+async function goToTeam(){
 
   if(!requireLogin()) return;
 
-  const team = document.getElementById("teamSection");
+  const team =
+    document.getElementById(
+      "teamSection"
+    );
 
-  if(team){
-    team.style.display = "block";
+  if(!team) return;
 
-    team.scrollIntoView({
-      behavior:"smooth",
-      block:"start"
-    });
+  team.style.display =
+    "block";
+
+  team.scrollIntoView({
+
+    behavior:"smooth",
+
+    block:"start"
+
+  });
+
+  try{
+
+    const token =
+      localStorage.getItem(
+        "casharrowToken"
+      );
+
+    if(!token) return;
+
+    const response =
+      await fetch(
+        "/api/team",
+        {
+
+          headers:{
+            "Authorization":
+              "Bearer " + token
+          }
+
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if(!data.success) return;
+
+    const memberCount =
+      team.querySelector(
+        ".team-member-count"
+      );
+
+    const teamEarnings =
+      team.querySelector(
+        ".team-earnings"
+      );
+
+    if(memberCount){
+
+      memberCount.textContent =
+        data.memberCount;
+
+    }
+
+    if(teamEarnings){
+
+      teamEarnings.textContent =
+        "UGX " +
+        Number(
+          data.earnings || 0
+        ).toLocaleString();
+
+    }
+
+  }catch(error){
+
+    console.error(
+      "Unable to load team:",
+      error
+    );
+
   }
+
 }
+
+
+/*
+  INVITE FRIENDS
+*/
 
 function openInvite(){
 
   if(!requireLogin()) return;
 
-  const user = JSON.parse(
-    localStorage.getItem("casharrowUser")
-  );
+  const user =
+    JSON.parse(
+      localStorage.getItem(
+        "casharrowUser"
+      )
+    );
 
   if(!user) return;
 
   const referralCode =
-    "CA" + String(user.id || user.phone)
-    .replace(/\D/g,"")
-    .slice(-6);
+    user.referralCode;
+
+  if(!referralCode){
+
+    alert(
+      "Your referral code is not available yet. Please login again."
+    );
+
+    return;
+  }
 
   const referralLink =
-    window.location.origin + "/?ref=" + referralCode;
+    window.location.origin +
+    "/?ref=" +
+    referralCode;
 
-  document.getElementById("referralLink").value =
+  document.getElementById(
+    "referralLink"
+  ).value =
     referralLink;
 
-  document.getElementById("inviteBox").style.display =
+  document.getElementById(
+    "inviteBox"
+  ).style.display =
     "block";
+
 }
+
+
+/*
+  COPY REFERRAL
+*/
 
 function copyReferral(){
 
   const link =
-    document.getElementById("referralLink").value;
+    document.getElementById(
+      "referralLink"
+    ).value;
 
-  navigator.clipboard.writeText(link).then(() => {
+  navigator.clipboard
+    .writeText(link)
+    .then(() => {
 
-    alert("✅ Referral link copied!");
+      alert(
+        "✅ Referral link copied!"
+      );
 
-  }).catch(() => {
+    })
+    .catch(() => {
 
-    alert("Please copy the referral link manually.");
+      alert(
+        "Please copy the referral link manually."
+      );
 
-  });
+    });
+
 }
+
+
+/*
+  SHARE REFERRAL
+*/
 
 async function shareReferral(){
 
   const link =
-    document.getElementById("referralLink").value;
+    document.getElementById(
+      "referralLink"
+    ).value;
+
+  if(!link) return;
 
   if(navigator.share){
 
     try{
 
       await navigator.share({
-        title:"Join CashArrow",
-        text:"Join me on CashArrow!",
+
+        title:
+          "Join CashArrow",
+
+        text:
+          "Join me on CashArrow!",
+
         url:link
+
       });
 
     }catch(error){
 
-      console.log("Share cancelled.");
+      console.log(
+        "Share cancelled."
+      );
 
     }
 
@@ -1063,6 +1862,26 @@ async function shareReferral(){
     copyReferral();
 
   }
+
 }
 
+
+/*
+  CLOSE MODAL WHEN CLICKING OUTSIDE
+*/
+
+window.onclick =
+  function(event){
+
+    if(event.target === modal){
+
+      closeModal();
+
+    }
+
+  };
+
 </script>
+
+</body>
+</html>
