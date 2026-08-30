@@ -120,7 +120,15 @@ app.post("/api/register", (req, res) => {
     WHERE id = ?
   `).run(newReferralCode, newUserId);
 
+  /*
+    Add the new member to the referrer's team
+    and give the referrer UGX 5,000.
+  */
+
   if (referrer) {
+
+    const referralReward = 5000;
+
     db.prepare(`
       INSERT INTO team
       (user_id, member_name, earn)
@@ -128,7 +136,26 @@ app.post("/api/register", (req, res) => {
     `).run(
       referrer.id,
       name,
-      0
+      referralReward
+    );
+
+    db.prepare(`
+      UPDATE users
+      SET balance = balance + ?
+      WHERE id = ?
+    `).run(
+      referralReward,
+      referrer.id
+    );
+
+    db.prepare(`
+      INSERT INTO transactions
+      (user_id, type, amount, date)
+      VALUES (?, ?, ?, datetime('now'))
+    `).run(
+      referrer.id,
+      "Referral Reward",
+      referralReward
     );
   }
 
