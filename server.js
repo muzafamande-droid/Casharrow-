@@ -71,27 +71,37 @@ const registerUser = db.transaction(({ phone, name, password, referralCode }) =>
   const normalizedReferralCode = referralCode
     ? String(referralCode).trim().toUpperCase()
     : null;
+
   const referrer = normalizedReferralCode
-    ? db.prepare("SELECT id, name FROM users WHERE referral_code = ?")
-      .get(normalizedReferralCode)
+    ? db
+        .prepare("SELECT id, name FROM users WHERE referral_code = ?")
+        .get(normalizedReferralCode)
     : null;
 
   const hash = bcrypt.hashSync(password, 10);
+
   const result = db.prepare(`
     INSERT INTO users
     (phone, name, password, referral_code, referred_by)
     VALUES (?, ?, ?, ?, ?)
-  `).run(phone, name, hash, null, referrer ? referrer.id : null);
+  `).run(
+    phone,
+    name,
+    hash,
+    null,
+    referrer ? referrer.id : null
+  );
 
   const newUserId = result.lastInsertRowid;
   const newReferralCode = "CA" + String(newUserId).padStart(6, "0");
 
-  db.prepare("UPDATE users SET referral_code = ? WHERE id = ?")
-    .run(newReferralCode, newUserId);
+  db.prepare(`
+    UPDATE users
+    SET referral_code = ?
+    WHERE id = ?
+  `).run(newReferralCode, newUserId);
 
   if (referrer) {
-    // The unique referred_user_id is a final guard against a referral ever
-    // being rewarded more than once, including after a retried request.
     const reward = db.prepare(`
       INSERT INTO referral_rewards
       (referrer_id, referred_user_id, amount)
@@ -100,17 +110,26 @@ const registerUser = db.transaction(({ phone, name, password, referralCode }) =>
 
     if (reward.changes === 1) {
       db.prepare(`
-        INSERT INTO team (user_id, member_name, earn)
+        INSERT INTO team
+        (user_id, member_name, earn)
         VALUES (?, ?, ?)
       `).run(referrer.id, name, REFERRAL_REWARD);
 
-      db.prepare("UPDATE users SET balance = balance + ? WHERE id = ?")
-        .run(REFERRAL_REWARD, referrer.id);
+      db.prepare(`
+        UPDATE users
+        SET balance = balance + ?
+        WHERE id = ?
+      `).run(REFERRAL_REWARD, referrer.id);
 
       db.prepare(`
-        INSERT INTO transactions (user_id, type, amount, date)
+        INSERT INTO transactions
+        (user_id, type, amount, date)
         VALUES (?, ?, ?, datetime('now'))
-      `).run(referrer.id, "Referral Reward", REFERRAL_REWARD);
+      `).run(
+        referrer.id,
+        "Referral Reward",
+        REFERRAL_REWARD
+      );
     }
   }
 
@@ -141,7 +160,10 @@ app.post("/api/register", (req, res) => {
     registration = registerUser({ phone, name, password, referralCode });
   } catch (error) {
     console.error("Registration failed:", error);
-    return res.status(500).json({ success: false, message: "Registration failed" });
+    return res.status(500).json({
+      success: false,
+      message: "Registration failed"
+    });
   }
 
   if (registration.error) {
