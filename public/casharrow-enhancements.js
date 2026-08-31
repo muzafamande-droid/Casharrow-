@@ -1,4 +1,7 @@
 (() => {
+  if (window.__casharrowEnhancementsLoaded) return;
+  window.__casharrowEnhancementsLoaded = true;
+
   const token = () => localStorage.getItem("casharrowToken");
 
   const style = document.createElement("style");
@@ -6,13 +9,12 @@
     .casharrow-deposit{display:none;margin-top:24px}
     .casharrow-deposit .deposit-note{color:#7b8494;font-size:13px;line-height:1.45;margin:8px 0 16px}
     .casharrow-deposit .deposit-status{font-size:13px;margin-top:10px;min-height:18px}
-    .guest-balance-message{font-size:18px;font-weight:800;margin:10px 0 18px;color:#17366f}
     #userWallet .actions{grid-template-columns:repeat(3,1fr)}
     .bottom{background:linear-gradient(135deg,#06142f 0%,#0a2c67 50%,#087cff 100%) !important;border-top:1px solid rgba(255,255,255,.16)!important;box-shadow:0 -10px 28px rgba(7,48,112,.22)!important}
     .bottom .nav{color:rgba(255,255,255,.78)!important}
     .bottom .nav.active{color:#fff!important;background:rgba(255,255,255,.16)!important}
     .bottom .nav div{filter:drop-shadow(0 2px 5px rgba(0,0,0,.18))}
-    @media(max-width:420px){#userWallet .actions{grid-template-columns:1fr 1fr}.guest-balance-message{font-size:16px}}
+    @media(max-width:420px){#userWallet .actions{grid-template-columns:1fr 1fr}}
   `;
   document.head.appendChild(style);
 
@@ -173,16 +175,6 @@
     window.location.reload();
   }
 
-  function hideGuestBalanceZero() {
-    const balanceCard = document.querySelector(".container > .balance:first-child");
-    if (!balanceCard) return;
-    const amount = balanceCard.querySelector(".amount");
-    if (!amount || amount.dataset.casharrowGuestFixed) return;
-    amount.dataset.casharrowGuestFixed = "1";
-    amount.textContent = "Login to view your balance";
-    amount.classList.add("guest-balance-message");
-  }
-
   const originalRegister = window.register;
   if (typeof originalRegister === "function") {
     window.register = async function () {
@@ -221,7 +213,6 @@
     addConfirmPassword();
     addDepositUI();
     addLogoutControl();
-    hideGuestBalanceZero();
 
     if (token()) {
       setTimeout(showDeposit, 0);
