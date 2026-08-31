@@ -883,6 +883,36 @@ select:focus{
 const modal =
   document.getElementById("modal");
 
+const pendingReferralStorageKey = "casharrowPendingReferral";
+
+function getPendingReferralCode(){
+
+  const referralCode =
+    new URLSearchParams(window.location.search)
+      .get("ref");
+
+  if(referralCode){
+
+    const normalizedCode = referralCode.trim().toUpperCase();
+
+    if(normalizedCode){
+
+      sessionStorage.setItem(
+        pendingReferralStorageKey,
+        normalizedCode
+      );
+
+      return normalizedCode;
+    }
+  }
+
+  return sessionStorage.getItem(pendingReferralStorageKey);
+}
+
+// Store a referral as soon as the link is opened, before the visitor opens
+// the registration form or reloads/navigates within the application.
+getPendingReferralCode();
+
 
 function openModal(type){
 
@@ -978,19 +1008,10 @@ async function register(){
     return;
   }
 
-  /*
-    Get referral code from the URL.
-    Example:
-    /?ref=CA000001
-  */
-
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
+  // This is kept independently from the signed-in user so a referral link
+  // cannot be replaced by the account already stored in localStorage.
   const referralCode =
-    params.get("ref");
+    getPendingReferralCode();
 
   try{
 
@@ -1018,6 +1039,10 @@ async function register(){
       await response.json();
 
     if(data.success){
+
+      sessionStorage.removeItem(
+        pendingReferralStorageKey
+      );
 
       showMessage(
         "registerMessage",

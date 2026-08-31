@@ -2,7 +2,7 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, 'casharrow.db'));
+const db = new Database(process.env.DATABASE_PATH || path.join(__dirname, 'casharrow.db'));
 
 /*
   Create CashArrow database tables
@@ -72,6 +72,16 @@ db.exec(`
     member_name TEXT,
     earn REAL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS referral_rewards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    referrer_id INTEGER NOT NULL,
+    referred_user_id INTEGER NOT NULL UNIQUE,
+    amount REAL NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (referrer_id) REFERENCES users(id),
+    FOREIGN KEY (referred_user_id) REFERENCES users(id)
   );
 `);
 

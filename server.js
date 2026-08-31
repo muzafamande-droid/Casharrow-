@@ -57,6 +57,66 @@ message: "CashArrow server is running"
 });
 });
 
+const REFERRAL_REWARD = 5000;
+
+const registerUser = db.transaction(({ phone, name, password, referralCode }) => {
+  const existingUser = db
+    .prepare("SELECT id FROM users WHERE phone = ?")
+    .get(phone);
+
+  if (existingUser) {
+    return { error: "An account with this phone already exists", status: 409 };
+  }
+
+  const normalizedReferralCode = referralCode
+    ? String(referralCode).trim().toUpperCase()
+    : null;
+  const referrer = normalizedReferralCode
+    ? db.prepare("SELECT id, name FROM users WHERE referral_code = ?")
+      .get(normalizedReferralCode)
+    : null;
+
+  const hash = bcrypt.hashSync(password, 10);
+  const result = db.prepare(`
+    INSERT INTO users
+    (phone, name, password, referral_code, referred_by)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(phone, name, hash, null, referrer ? referrer.id : null);
+
+  const newUserId = result.lastInsertRowid;
+  const newReferralCode = "CA" + String(newUserId).padStart(6, "0");
+
+  db.prepare("UPDATE users SET referral_code = ? WHERE id = ?")
+    .run(newReferralCode, newUserId);
+
+  if (referrer) {
+    // The unique referred_user_id is a final guard against a referral ever
+    // being rewarded more than once, including after a retried request.
+    const reward = db.prepare(`
+      INSERT INTO referral_rewards
+      (referrer_id, referred_user_id, amount)
+      VALUES (?, ?, ?)
+    `).run(referrer.id, newUserId, REFERRAL_REWARD);
+
+    if (reward.changes === 1) {
+      db.prepare(`
+        INSERT INTO team (user_id, member_name, earn)
+        VALUES (?, ?, ?)
+      `).run(referrer.id, name, REFERRAL_REWARD);
+
+      db.prepare("UPDATE users SET balance = balance + ? WHERE id = ?")
+        .run(REFERRAL_REWARD, referrer.id);
+
+      db.prepare(`
+        INSERT INTO transactions (user_id, type, amount, date)
+        VALUES (?, ?, ?, datetime('now'))
+      `).run(referrer.id, "Referral Reward", REFERRAL_REWARD);
+    }
+  }
+
+  return { newUserId, newReferralCode };
+});
+
 // Register
 app.post("/api/register", (req, res) => {
 
@@ -76,94 +136,26 @@ app.post("/api/register", (req, res) => {
     });
   }
 
-  const existingUser = db
-    .prepare("SELECT id FROM users WHERE phone = ?")
-    .get(phone);
+  let registration;
+  try {
+    registration = registerUser({ phone, name, password, referralCode });
+  } catch (error) {
+    console.error("Registration failed:", error);
+    return res.status(500).json({ success: false, message: "Registration failed" });
+  }
 
-  if (existingUser) {
-    return res.status(409).json({
+  if (registration.error) {
+    return res.status(registration.status).json({
       success: false,
-      message: "An account with this phone already exists"
+      message: registration.error
     });
-  }
-
-  let referrer = null;
-
-  if (referralCode) {
-    referrer = db
-      .prepare("SELECT id, name FROM users WHERE referral_code = ?")
-      .get(referralCode);
-  }
-
-  const hash = bcrypt.hashSync(password, 10);
-
-  const result = db.prepare(`
-    INSERT INTO users
-    (phone, name, password, referral_code, referred_by)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(
-    phone,
-    name,
-    hash,
-    null,
-    referrer ? referrer.id : null
-  );
-
-  const newUserId = result.lastInsertRowid;
-
-  const newReferralCode =
-    "CA" + String(newUserId).padStart(6, "0");
-
-  db.prepare(`
-    UPDATE users
-    SET referral_code = ?
-    WHERE id = ?
-  `).run(newReferralCode, newUserId);
-
-  /*
-    Add the new member to the referrer's team
-    and give the referrer UGX 5,000.
-  */
-
-  if (referrer) {
-
-  const referralReward = 5000;
-
-    db.prepare(`
-      INSERT INTO team
-      (user_id, member_name, earn)
-      VALUES (?, ?, ?)
-    `).run(
-      referrer.id,
-      name,
-      referralReward
-    );
-
-    db.prepare(`
-      UPDATE users
-      SET balance = balance + ?
-      WHERE id = ?
-    `).run(
-      referralReward,
-      referrer.id
-    );
-
-    db.prepare(`
-      INSERT INTO transactions
-      (user_id, type, amount, date)
-      VALUES (?, ?, ?, datetime('now'))
-    `).run(
-      referrer.id,
-      "Referral Reward",
-      referralReward
-    );
   }
 
   res.status(201).json({
     success: true,
     message: "Account created successfully",
-    userId: newUserId,
-    referralCode: newReferralCode
+    userId: registration.newUserId,
+    referralCode: registration.newReferralCode
   });
 });
 
@@ -404,6 +396,10 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, () => {
-  console.log(`CashArrow is running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`CashArrow is running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
