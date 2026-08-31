@@ -6,7 +6,6 @@
     .casharrow-deposit{display:none;margin-top:24px}
     .casharrow-deposit .deposit-note{color:#7b8494;font-size:13px;line-height:1.45;margin:8px 0 16px}
     .casharrow-deposit .deposit-status{font-size:13px;margin-top:10px;min-height:18px}
-    .casharrow-account-button{margin-top:10px;width:100%}
     .guest-balance-message{font-size:18px;font-weight:800;margin:10px 0 18px;color:#17366f}
     #userWallet .actions{grid-template-columns:repeat(3,1fr)}
     .bottom{background:linear-gradient(135deg,#06142f 0%,#0a2c67 50%,#087cff 100%) !important;border-top:1px solid rgba(255,255,255,.16)!important;box-shadow:0 -10px 28px rgba(7,48,112,.22)!important}
@@ -153,6 +152,10 @@
     const accountNav = navs[navs.length - 1];
     if (!accountNav) return;
     accountNav.onclick = handleAccountAction;
+    const label = accountNav.childNodes[accountNav.childNodes.length - 1];
+    if (label && label.nodeType === Node.TEXT_NODE) {
+      label.textContent = token() ? "Logout" : "Account";
+    }
   }
 
   function handleAccountAction() {
