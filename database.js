@@ -2,11 +2,7 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, 'casharrow.db'));
-
-/*
-  Create CashArrow database tables
-*/
+const db = new Database(process.env.DATABASE_PATH || path.join(__dirname, 'casharrow.db'));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -73,12 +69,17 @@ db.exec(`
     earn REAL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
-`);
 
-/*
-  Add referral columns to an existing database
-  if they do not already exist.
-*/
+  CREATE TABLE IF NOT EXISTS referral_rewards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    referrer_id INTEGER NOT NULL,
+    referred_user_id INTEGER NOT NULL UNIQUE,
+    amount REAL NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (referrer_id) REFERENCES users(id),
+    FOREIGN KEY (referred_user_id) REFERENCES users(id)
+  );
+`);
 
 const userColumns = db
   .prepare("PRAGMA table_info(users)")
@@ -86,55 +87,35 @@ const userColumns = db
   .map(column => column.name);
 
 if (!userColumns.includes("referral_code")) {
-  db.prepare(
-    "ALTER TABLE users ADD COLUMN referral_code TEXT"
-  ).run();
+  db.prepare("ALTER TABLE users ADD COLUMN referral_code TEXT").run();
 }
 
 if (!userColumns.includes("referred_by")) {
-  db.prepare(
-    "ALTER TABLE users ADD COLUMN referred_by INTEGER"
-  ).run();
+  db.prepare("ALTER TABLE users ADD COLUMN referred_by INTEGER").run();
 }
 
-/*
-  Give existing users a referral code.
-*/
-
 const usersWithoutReferral = db.prepare(`
-  SELECT id
-  FROM users
-  WHERE referral_code IS NULL
+  SELECT id FROM users WHERE referral_code IS NULL
 `);
 
 const updateReferralCode = db.prepare(`
-  UPDATE users
-  SET referral_code = ?
-  WHERE id = ?
+  UPDATE users SET referral_code = ? WHERE id = ?
 `);
 
 for (const user of usersWithoutReferral.all()) {
   const code = "CA" + String(user.id).padStart(6, "0");
-
   updateReferralCode.run(code, user.id);
 }
-
-/*
-  Create admin account if one does not exist.
-*/
 
 const adminExists = db
   .prepare("SELECT id FROM users WHERE role = ?")
   .get("admin");
 
 if (!adminExists) {
-
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!adminPassword) {
-    throw new Error(
-      "ADMIN_PASSWORD environment variable is not configured"
-    );
+    throw new Error("ADMIN_PASSWORD environment variable is not configured");
   }
 
   const hash = bcrypt.hashSync(adminPassword, 12);
@@ -143,22 +124,12 @@ if (!adminExists) {
     INSERT INTO users
     (phone, name, password, role, balance, vip, referral_code)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    "admin",
-    "Admin",
-    hash,
-    "admin",
-    0,
-    10,
-    "CAADMIN"
-  );
+  `).run("admin", "Admin", hash, "admin", 0, 10, "CAADMIN");
 
   const adminId = info.lastInsertRowid;
 
   const insertTask = db.prepare(`
-    INSERT INTO tasks
-    (user_id, title, reward)
-    VALUES (?, ?, ?)
+    INSERT INTO tasks (user_id, title, reward) VALUES (?, ?, ?)
   `);
 
   insertTask.run(adminId, "Invite 3 friends", 500);
@@ -166,8 +137,7 @@ if (!adminExists) {
   insertTask.run(adminId, "Share app", 200);
 
   const insertReward = db.prepare(`
-    INSERT INTO rewards
-    (user_id, title, amount, claimed)
+    INSERT INTO rewards (user_id, title, amount, claimed)
     VALUES (?, ?, ?, ?)
   `);
 
