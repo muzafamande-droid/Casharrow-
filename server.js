@@ -1,4 +1,5 @@
 const express = require("express");
+const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -47,7 +48,7 @@ function requireAdmin(req, res, next) {
 
   next();
 }
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 // Server status
 app.get("/api/status", (req, res) => {
@@ -325,11 +326,15 @@ app.post("/api/admin/deposits/:id/approve", authenticateToken, requireAdmin, (re
         return { error: "Deposit has already been processed", status: 409 };
       }
 
-      db.prepare(`
+      const update = db.prepare(`
         UPDATE deposits
         SET status = 'approved', approved_at = datetime('now')
         WHERE id = ? AND status = 'pending'
       `).run(depositId);
+
+      if (update.changes !== 1) {
+        return { error: "Deposit has already been processed", status: 409 };
+      }
 
       db.prepare(`
         UPDATE users
@@ -561,7 +566,13 @@ app.get("/api/team", authenticateToken, (req, res) => {
 
 // Website
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  const htmlPath = path.join(__dirname, "public", "index.html");
+  const html = fs.readFileSync(htmlPath, "utf8");
+  const enhancedHtml = html.replace(
+    "</body>",
+    '  <script src="/casharrow-enhancements.js"></script>\n</body>'
+  );
+  res.type("html").send(enhancedHtml);
 });
 
 if (require.main === module) {
