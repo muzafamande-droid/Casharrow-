@@ -1,4 +1,5 @@
 const express = require("express");
+const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -47,14 +48,14 @@ function requireAdmin(req, res, next) {
 
   next();
 }
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 // Server status
 app.get("/api/status", (req, res) => {
-res.json({
-success: true,
-message: "CashArrow server is running"
-});
+  res.json({
+    success: true,
+    message: "CashArrow server is running"
+  });
 });
 
 const REFERRAL_REWARD = 5000;
@@ -138,13 +139,12 @@ const registerUser = db.transaction(({ phone, name, password, referralCode }) =>
 
 // Register
 app.post("/api/register", (req, res) => {
+  const { phone, name, password, confirmPassword, referralCode } = req.body;
 
-  const { phone, name, password, referralCode } = req.body;
-
-  if (!phone || !name || !password) {
+  if (!phone || !name || !password || !confirmPassword) {
     return res.status(400).json({
       success: false,
-      message: "Name, phone and password are required"
+      message: "Name, phone, password and confirm password are required"
     });
   }
 
@@ -152,6 +152,13 @@ app.post("/api/register", (req, res) => {
     return res.status(400).json({
       success: false,
       message: "Password must be at least 6 characters"
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "Passwords do not match"
     });
   }
 
@@ -183,51 +190,53 @@ app.post("/api/register", (req, res) => {
 
 // Login
 app.post("/api/login", (req, res) => {
-const { phone, password } = req.body;
+  const { phone, password } = req.body;
 
-if (!phone || !password) {
-return res.status(400).json({
-success: false,
-message: "Phone and password are required"
-});
-}
-
-const user = db
-.prepare("SELECT * FROM users WHERE phone = ?")
-.get(phone);
-
-if (!user || !bcrypt.compareSync(password, user.password)) {
-return res.status(401).json({
-success: false,
-message: "Invalid phone or password"
-});
-}
-const token = jwt.sign(
-  {
-    id: user.id,
-    role: user.role
-  },
-  JWT_SECRET,
-  {
-    expiresIn: "7d"
+  if (!phone || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Phone and password are required"
+    });
   }
-);
 
-res.json({
-  success: true,
-  message: "Login successful",
-  token,
-  user: {
-    id: user.id,
-    name: user.name,
-    phone: user.phone,
-    role: user.role,
-    balance: user.balance,
-    wallet: user.wallet,
-    referralCode: user.referral_code
+  const user = db
+    .prepare("SELECT * FROM users WHERE phone = ?")
+    .get(phone);
+
+  if (!user || !bcrypt.compareSync(password, user.password)) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid phone or password"
+    });
   }
+
+  const token = jwt.sign(
+    {
+      id: user.id,
+      role: user.role
+    },
+    JWT_SECRET,
+    {
+      expiresIn: "7d"
+    }
+  );
+
+  res.json({
+    success: true,
+    message: "Login successful",
+    token,
+    user: {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      role: user.role,
+      balance: user.balance,
+      wallet: user.wallet,
+      referralCode: user.referral_code
+    }
+  });
 });
-});
+
 // Admin test route
 app.get("/api/admin", authenticateToken, requireAdmin, (req, res) => {
   res.json({
@@ -242,7 +251,6 @@ app.get("/api/admin", authenticateToken, requireAdmin, (req, res) => {
 
 // Admin dashboard
 app.get("/api/admin/dashboard", authenticateToken, requireAdmin, (req, res) => {
-
   const totalUsers = db
     .prepare("SELECT COUNT(*) AS count FROM users")
     .get().count;
@@ -262,9 +270,9 @@ app.get("/api/admin/dashboard", authenticateToken, requireAdmin, (req, res) => {
     totalTasks
   });
 });
+
 // Admin users
 app.get("/api/admin/users", authenticateToken, requireAdmin, (req, res) => {
-
   const users = db.prepare(`
     SELECT id, name, phone, balance, role, vip
     FROM users
@@ -276,9 +284,94 @@ app.get("/api/admin/users", authenticateToken, requireAdmin, (req, res) => {
     users
   });
 });
+
+// Admin deposit requests
+app.get("/api/admin/deposits", authenticateToken, requireAdmin, (req, res) => {
+  const deposits = db.prepare(`
+    SELECT id, user_id, amount, network, account, status, date, approved_at
+    FROM deposits
+    ORDER BY id DESC
+  `).all();
+
+  res.json({
+    success: true,
+    deposits
+  });
+});
+
+// Approve a pending deposit and credit the user's balance exactly once
+app.post("/api/admin/deposits/:id/approve", authenticateToken, requireAdmin, (req, res) => {
+  const depositId = Number(req.params.id);
+
+  if (!Number.isInteger(depositId) || depositId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid deposit ID"
+    });
+  }
+
+  try {
+    const result = db.transaction(() => {
+      const deposit = db.prepare(`
+        SELECT id, user_id, amount, status
+        FROM deposits
+        WHERE id = ?
+      `).get(depositId);
+
+      if (!deposit) {
+        return { error: "Deposit request not found", status: 404 };
+      }
+
+      if (deposit.status !== "pending") {
+        return { error: "Deposit has already been processed", status: 409 };
+      }
+
+      const update = db.prepare(`
+        UPDATE deposits
+        SET status = 'approved', approved_at = datetime('now')
+        WHERE id = ? AND status = 'pending'
+      `).run(depositId);
+
+      if (update.changes !== 1) {
+        return { error: "Deposit has already been processed", status: 409 };
+      }
+
+      db.prepare(`
+        UPDATE users
+        SET balance = balance + ?, wallet = wallet + ?
+        WHERE id = ?
+      `).run(deposit.amount, deposit.amount, deposit.user_id);
+
+      db.prepare(`
+        INSERT INTO transactions (user_id, type, amount, date)
+        VALUES (?, 'Deposit', ?, datetime('now'))
+      `).run(deposit.user_id, deposit.amount);
+
+      return { success: true };
+    })();
+
+    if (result.error) {
+      return res.status(result.status).json({
+        success: false,
+        message: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Deposit approved and wallet credited"
+    });
+  } catch (error) {
+    console.error("Deposit approval failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to approve deposit"
+    });
+  }
+});
+
 // My wallet
 app.get("/api/wallet", authenticateToken, (req, res) => {
-
   const user = db.prepare(`
     SELECT id, balance, wallet
     FROM users
@@ -300,9 +393,67 @@ app.get("/api/wallet", authenticateToken, (req, res) => {
     }
   });
 });
+
+// Create a deposit request. Money is NOT credited until an admin approves it.
+app.post("/api/deposits", authenticateToken, (req, res) => {
+  const { amount, network, account } = req.body;
+  const depositAmount = Number(amount);
+
+  if (!Number.isFinite(depositAmount) || depositAmount <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Enter a valid deposit amount"
+    });
+  }
+
+  if (!network || !["MTN", "Airtel"].includes(network)) {
+    return res.status(400).json({
+      success: false,
+      message: "Please select MTN or Airtel"
+    });
+  }
+
+  if (!account || !String(account).trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Enter your Mobile Money number"
+    });
+  }
+
+  const result = db.prepare(`
+    INSERT INTO deposits (user_id, amount, network, account, status, date)
+    VALUES (?, ?, ?, ?, 'pending', datetime('now'))
+  `).run(
+    req.user.id,
+    depositAmount,
+    network,
+    String(account).trim()
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Deposit request submitted. Your balance will update after approval.",
+    depositId: result.lastInsertRowid
+  });
+});
+
+// My deposit requests
+app.get("/api/deposits", authenticateToken, (req, res) => {
+  const deposits = db.prepare(`
+    SELECT id, amount, network, account, status, date, approved_at
+    FROM deposits
+    WHERE user_id = ?
+    ORDER BY id DESC
+  `).all(req.user.id);
+
+  res.json({
+    success: true,
+    deposits
+  });
+});
+
 // My transactions
 app.get("/api/transactions", authenticateToken, (req, res) => {
-
   const transactions = db.prepare(`
     SELECT id, type, amount, date
     FROM transactions
@@ -315,9 +466,9 @@ app.get("/api/transactions", authenticateToken, (req, res) => {
     transactions
   });
 });
+
 // Create withdrawal request
 app.post("/api/withdrawals", authenticateToken, (req, res) => {
-
   const { amount, account } = req.body;
 
   if (!amount || !account) {
@@ -367,6 +518,7 @@ app.post("/api/withdrawals", authenticateToken, (req, res) => {
     withdrawalId: result.lastInsertRowid
   });
 });
+
 // Tasks
 app.get("/api/tasks", (req, res) => {
   const tasks = db
@@ -393,7 +545,6 @@ app.get("/api/rewards", (req, res) => {
 
 // Team
 app.get("/api/team", authenticateToken, (req, res) => {
-
   const members = db.prepare(`
     SELECT member_name, earn
     FROM team
@@ -415,7 +566,13 @@ app.get("/api/team", authenticateToken, (req, res) => {
 
 // Website
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  const htmlPath = path.join(__dirname, "public", "index.html");
+  const html = fs.readFileSync(htmlPath, "utf8");
+  const enhancedHtml = html.replace(
+    "</body>",
+    '  <script src="/casharrow-enhancements.js"></script>\n</body>'
+  );
+  res.type("html").send(enhancedHtml);
 });
 
 if (require.main === module) {

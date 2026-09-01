@@ -4,96 +4,34 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CashArrow Admin</title>
-
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f7fb;
-      color: #172033;
-      min-height: 100vh;
-    }
-
-    header {
-      background: linear-gradient(135deg, #0757e8, #14a3ff);
-      color: white;
-      padding: 24px 20px;
-    }
-
-    header h1 {
-      font-size: 25px;
-    }
-
-    header p {
-      margin-top: 6px;
-      opacity: .85;
-      font-size: 13px;
-    }
-
-    .container {
-      max-width: 700px;
-      margin: auto;
-      padding: 20px 16px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 18px;
-      padding: 20px;
-      margin-bottom: 15px;
-      box-shadow: 0 4px 15px rgba(0,0,0,.06);
-    }
-
-    .card h2 {
-      font-size: 18px;
-      margin-bottom: 8px;
-    }
-
-    .status {
-      color: #0a8f52;
-      font-weight: bold;
-    }
-
-    button {
-      border: 0;
-      padding: 13px 18px;
-      border-radius: 12px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .logout {
-      background: #ffecec;
-      color: #d93025;
-    }
-
-    #message {
-      margin-top: 12px;
-      font-size: 14px;
-    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;background:#f4f7fb;color:#172033;min-height:100vh}
+    header{background:linear-gradient(135deg,#06142f,#0a2c67,#087cff);color:white;padding:24px 20px}
+    header h1{font-size:25px} header p{margin-top:6px;opacity:.85;font-size:13px}
+    .container{max-width:760px;margin:auto;padding:20px 16px}
+    .card{background:white;border-radius:18px;padding:20px;margin-bottom:15px;box-shadow:0 4px 15px rgba(0,0,0,.06)}
+    .card h2{font-size:18px;margin-bottom:8px}
+    .status{color:#0a8f52;font-weight:bold}
+    button{border:0;padding:11px 15px;border-radius:12px;font-weight:bold;cursor:pointer;background:#0757e8;color:white}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .logout{background:#ffecec;color:#d93025}
+    .muted{color:#718096;font-size:13px}
+    .message{margin-top:10px;font-size:14px}
+    .deposit{border:1px solid #e3ebf7;border-radius:14px;padding:14px;margin-top:12px}
+    .deposit-row{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+    .deposit-meta{font-size:13px;line-height:1.55;color:#536174;margin-top:7px}
+    .pending{color:#b26a00;font-weight:700}
+    .approved{color:#0a8f52;font-weight:700}
+    .empty{padding:12px 0;color:#718096;font-size:14px}
   </style>
 </head>
-
 <body>
-
-  </style>
-</head>
-
-<body>
-
 <header>
   <h1>👑 CashArrow Admin Panel</h1>
   <p>Private administration area</p>
 </header>
-
 <main class="container">
-
-
   <div class="card">
     <h2>🔐 Security Status</h2>
     <p class="status">Admin authentication active</p>
@@ -105,180 +43,112 @@
   </div>
 
   <div class="card">
-  <h2>📊 Dashboard</h2>
+    <h2>📊 Dashboard</h2>
+    <p>👥 Total Users: <strong id="totalUsers">Loading...</strong></p>
+    <p>💰 Total Balance: <strong id="totalBalance">Loading...</strong></p>
+    <p>🎯 Total Tasks: <strong id="totalTasks">Loading...</strong></p>
+    <button onclick="loadDashboard()">🔄 Refresh</button>
+    <div id="dashboardMessage" class="message"></div>
+  </div>
 
-  <p>👥 Total Users: <strong id="totalUsers">Loading...</strong></p>
-  <p>💰 Total Balance: <strong id="totalBalance">Loading...</strong></p>
-  <p>🎯 Total Tasks: <strong id="totalTasks">Loading...</strong></p>
-
-  <button onclick="loadDashboard()">🔄 Refresh</button>
-
-  <div id="dashboardMessage"></div>
-</div>
-
-    </div>
+  <div class="card">
+    <h2>💳 Deposit Requests</h2>
+    <p class="muted">Only approve a deposit after you have verified the real Mobile Money payment.</p>
+    <button onclick="loadDeposits()" style="margin-top:12px">🔄 Refresh Deposits</button>
+    <div id="depositMessage" class="message"></div>
+    <div id="depositsList">Loading deposits...</div>
+  </div>
 
   <div class="card">
     <h2>👥 Users</h2>
-
     <button onclick="loadUsers()">🔄 Refresh Users</button>
-
-    <div id="usersMessage"></div>
-
-    <div id="usersList">
-      Loading users...
-    </div>
+    <div id="usersMessage" class="message"></div>
+    <div id="usersList">Loading users...</div>
   </div>
 
   <div class="card">
     <button class="logout" onclick="logout()">Logout</button>
-    <div id="message"></div>
+    <div id="message" class="message"></div>
   </div>
-
 </main>
-
 <script>
+function getToken(){return localStorage.getItem("casharrowToken")}
+function authHeaders(json=false){const headers={Authorization:"Bearer "+getToken()};if(json)headers["Content-Type"]="application/json";return headers}
+function requireToken(){if(!getToken()){window.location.href="/";return false}return true}
 
-async function checkAdmin() {
-
-  const token = localStorage.getItem("casharrowToken");
-
-  if (!token) {
-    window.location.href = "/";
-    return;
-  }
-
-  try {
-
-    const response = await fetch("/api/admin", {
-      headers: {
-        "Authorization": "Bearer " + token
-      }
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-      localStorage.removeItem("casharrowToken");
-      localStorage.removeItem("casharrowUser");
-      window.location.href = "/";
-      return;
-    }
-
-    document.getElementById("adminInfo").textContent =
-      "Admin ID: " + data.admin.id +
-      " | Role: " + data.admin.role;
-
-  } catch (error) {
-
-    document.getElementById("message").textContent =
-      "Unable to verify admin session.";
-
-  }
-}
-async function loadDashboard() {
-
-  const token = localStorage.getItem("casharrowToken");
-
-  if (!token) {
-    window.location.href = "/";
-    return;
-  }
-
-  try {
-
-    const response = await fetch("/api/admin/dashboard", {
-      headers: {
-        "Authorization": "Bearer " + token
-      }
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-      document.getElementById("dashboardMessage").textContent =
-        data.message || "Unable to load dashboard.";
-      return;
-    }
-
-    document.getElementById("totalUsers").textContent =
-      data.totalUsers;
-
-    document.getElementById("totalBalance").textContent =
-      "UGX " + Number(data.totalBalance).toLocaleString();
-
-    document.getElementById("totalTasks").textContent =
-      data.totalTasks;
-
-  } catch (error) {
-
-    document.getElementById("dashboardMessage").textContent =
-      "Unable to load dashboard.";
-
-  }
-}
-async function loadUsers() {
-
-  const token = localStorage.getItem("casharrowToken");
-
-  if (!token) {
-    window.location.href = "/";
-    return;
-  }
-
-  try {
-
-    const response = await fetch("/api/admin/users", {
-      headers: {
-        "Authorization": "Bearer " + token
-      }
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-      document.getElementById("usersMessage").textContent =
-        data.message || "Unable to load users.";
-      return;
-    }
-
-    const usersList = document.getElementById("usersList");
-
-    if (data.users.length === 0) {
-      usersList.textContent = "No users found.";
-      return;
-    }
-
-    usersList.innerHTML = data.users.map(user => `
-      <div class="card">
-        <strong>${user.name}</strong><br>
-        Phone: ${user.phone}<br>
-        Balance: UGX ${Number(user.balance).toLocaleString()}<br>
-        Role: ${user.role}<br>
-        VIP: ${user.vip}
-      </div>
-    `).join("");
-
-  } catch (error) {
-
-    document.getElementById("usersMessage").textContent =
-      "Unable to load users.";
-
-  }
-}
-function logout() {
-
-  localStorage.removeItem("casharrowToken");
-  localStorage.removeItem("casharrowUser");
-
-  window.location.href = "/";
+async function checkAdmin(){
+  if(!requireToken())return;
+  try{
+    const response=await fetch("/api/admin",{headers:authHeaders()});
+    const data=await response.json();
+    if(!response.ok||!data.success){localStorage.removeItem("casharrowToken");localStorage.removeItem("casharrowUser");window.location.href="/";return}
+    document.getElementById("adminInfo").textContent="Admin ID: "+data.admin.id+" | Role: "+data.admin.role;
+  }catch(error){document.getElementById("message").textContent="Unable to verify admin session."}
 }
 
-checkAdmin();
-loadDashboard();
-loadUsers();
+async function loadDashboard(){
+  if(!requireToken())return;
+  try{
+    const response=await fetch("/api/admin/dashboard",{headers:authHeaders()});
+    const data=await response.json();
+    if(!response.ok||!data.success){document.getElementById("dashboardMessage").textContent=data.message||"Unable to load dashboard.";return}
+    document.getElementById("totalUsers").textContent=data.totalUsers;
+    document.getElementById("totalBalance").textContent="UGX "+Number(data.totalBalance).toLocaleString();
+    document.getElementById("totalTasks").textContent=data.totalTasks;
+  }catch(error){document.getElementById("dashboardMessage").textContent="Unable to load dashboard."}
+}
 
+async function loadDeposits(){
+  if(!requireToken())return;
+  const list=document.getElementById("depositsList");
+  const message=document.getElementById("depositMessage");
+  list.textContent="Loading deposits...";message.textContent="";
+  try{
+    const response=await fetch("/api/admin/deposits",{headers:authHeaders()});
+    const data=await response.json();
+    if(!response.ok||!data.success){message.textContent=data.message||"Unable to load deposits.";list.textContent="";return}
+    if(!data.deposits.length){list.innerHTML='<div class="empty">No deposit requests yet.</div>';return}
+    list.innerHTML=data.deposits.map(deposit=>{
+      const pending=deposit.status==="pending";
+      const statusClass=pending?"pending":"approved";
+      return `<div class="deposit">
+        <div class="deposit-row">
+          <strong>Deposit #${deposit.id} — UGX ${Number(deposit.amount).toLocaleString()}</strong>
+          ${pending?`<button onclick="approveDeposit(${deposit.id},this)">Approve</button>`:`<span class="${statusClass}">${deposit.status}</span>`}
+        </div>
+        <div class="deposit-meta">User ID: ${deposit.user_id}<br>Network: ${deposit.network}<br>Mobile Money: ${deposit.account}<br>Status: <span class="${statusClass}">${deposit.status}</span><br>Submitted: ${deposit.date||"—"}${deposit.approved_at?`<br>Approved: ${deposit.approved_at}`:""}</div>
+      </div>`;
+    }).join("");
+  }catch(error){message.textContent="Unable to load deposits.";list.textContent=""}
+}
+
+async function approveDeposit(id,button){
+  if(!requireToken())return;
+  if(!confirm("Have you verified this Mobile Money payment? Approve UGX deposit #"+id+"?"))return;
+  button.disabled=true;
+  try{
+    const response=await fetch("/api/admin/deposits/"+id+"/approve",{method:"POST",headers:authHeaders(true)});
+    const data=await response.json();
+    if(!response.ok||!data.success){alert(data.message||"Deposit approval failed.");button.disabled=false;return}
+    await Promise.all([loadDeposits(),loadDashboard(),loadUsers()]);
+  }catch(error){alert("Unable to approve deposit.");button.disabled=false}
+}
+
+async function loadUsers(){
+  if(!requireToken())return;
+  try{
+    const response=await fetch("/api/admin/users",{headers:authHeaders()});
+    const data=await response.json();
+    if(!response.ok||!data.success){document.getElementById("usersMessage").textContent=data.message||"Unable to load users.";return}
+    const usersList=document.getElementById("usersList");
+    if(data.users.length===0){usersList.textContent="No users found.";return}
+    usersList.innerHTML=data.users.map(user=>`<div class="card"><strong>${user.name}</strong><br>Phone: ${user.phone}<br>Balance: UGX ${Number(user.balance).toLocaleString()}<br>Role: ${user.role}<br>VIP: ${user.vip}</div>`).join("");
+  }catch(error){document.getElementById("usersMessage").textContent="Unable to load users."}
+}
+
+function logout(){localStorage.removeItem("casharrowToken");localStorage.removeItem("casharrowUser");window.location.href="/"}
+
+checkAdmin();loadDashboard();loadUsers();loadDeposits();
 </script>
-
 </body>
 </html>

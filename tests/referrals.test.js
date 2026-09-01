@@ -23,7 +23,10 @@ async function register(user) {
   const response = await fetch(`${baseUrl}/api/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(user)
+    body: JSON.stringify({
+      ...user,
+      confirmPassword: user.confirmPassword ?? user.password
+    })
   });
 
   return { status: response.status, body: await response.json() };
@@ -113,4 +116,90 @@ test("referrals save the link owner, grow their team, and reward exactly once", 
   assert.equal(db.prepare("SELECT balance FROM users WHERE id = ?").get(referrer.id).balance, 15000);
   assert.equal(db.prepare("SELECT COUNT(*) AS count FROM team WHERE user_id = ?").get(referrer.id).count, 3);
   assert.equal(db.prepare("SELECT COUNT(*) AS count FROM referral_rewards WHERE referrer_id = ?").get(referrer.id).count, 3);
+});
+
+test("registration rejects mismatched passwords", async () => {
+  const response = await register({
+    name: "Mismatch",
+    phone: "0700000099",
+    password: "password",
+    confirmPassword: "different"
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Passwords do not match");
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS count FROM users WHERE phone = ?").get("0700000099").count,
+    0
+  );
+});
+
+test("deposits stay pending until approved and are credited exactly once", async () => {
+  const loginResponse = await fetch(`${baseUrl}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: "0700000002", password: "password" })
+  });
+  const login = await loginResponse.json();
+  const authHeaders = {
+    Authorization: `Bearer ${login.token}`,
+    "Content-Type": "application/json"
+  };
+
+  const depositResponse = await fetch(`${baseUrl}/api/deposits`, {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      amount: 10000,
+      network: "MTN",
+      account: "0700000002"
+    })
+  });
+  const deposit = await depositResponse.json();
+
+  assert.equal(depositResponse.status, 201);
+  assert.equal(deposit.success, true);
+  assert.equal(
+    db.prepare("SELECT balance FROM users WHERE id = ?").get(2).balance,
+    15000
+  );
+
+  const adminLoginResponse = await fetch(`${baseUrl}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: "admin", password: "admin-password" })
+  });
+  const adminLogin = await adminLoginResponse.json();
+  const adminHeaders = {
+    Authorization: `Bearer ${adminLogin.token}`,
+    "Content-Type": "application/json"
+  };
+
+  const approveResponse = await fetch(`${baseUrl}/api/admin/deposits/${deposit.depositId}/approve`, {
+    method: "POST",
+    headers: adminHeaders
+  });
+  assert.equal(approveResponse.status, 200);
+
+  assert.equal(
+    db.prepare("SELECT balance FROM users WHERE id = ?").get(2).balance,
+    25000
+  );
+
+  const secondApprove = await fetch(`${baseUrl}/api/admin/deposits/${deposit.depositId}/approve`, {
+    method: "POST",
+    headers: adminHeaders
+  });
+  assert.equal(secondApprove.status, 409);
+  assert.equal(
+    db.prepare("SELECT balance FROM users WHERE id = ?").get(2).balance,
+    25000
+  );
+
+  const depositTransaction = db.prepare(`
+    SELECT amount FROM transactions
+    WHERE user_id = ? AND type = 'Deposit'
+  `).get(2);
+  assert.equal(depositTransaction.amount, 10000);
 });
