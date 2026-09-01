@@ -575,9 +575,17 @@ app.get("/", (req, res) => {
   res.type("html").send(enhancedHtml);
 });
 
-if (require.main === module) {
+async function startServer() {
+  await db.ready;
   app.listen(PORT, () => {
     console.log(`CashArrow is running on port ${PORT}`);
+  });
+}
+
+if (require.main === module) {
+  startServer().catch(error => {
+    console.error("CashArrow startup failed:", error);
+    process.exit(1);
   });
 }
 
