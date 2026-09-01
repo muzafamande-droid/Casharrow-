@@ -14,10 +14,29 @@ test("PostgreSQL persistence preserves unrelated concurrent process updates", { 
   const userA = 900001;
   const userB = 900002;
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const databaseModule = JSON.stringify(path.join(__dirname, "..", "database.js"));
+
+  async function bootstrapDatabase() {
+    await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, ["-e", `const db = require(${databaseModule}); db.ready.then(() => db.close()).catch(error => { console.error(error); process.exitCode = 1; });`], {
+        cwd: path.join(__dirname, ".."),
+        env: {
+          ...process.env,
+          DATABASE_PATH: path.join(tempDir, "bootstrap.db"),
+          ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "test-admin-password"
+        },
+        stdio: ["ignore", "ignore", "pipe"]
+      });
+      let stderr = "";
+      child.stderr.on("data", chunk => { stderr += chunk.toString(); });
+      child.on("error", reject);
+      child.on("exit", code => code === 0 ? resolve() : reject(new Error(`bootstrap exited with code ${code}: ${stderr}`)));
+    });
+  }
 
   const childSource = `
     const fs = require("node:fs");
-    const db = require(${JSON.stringify(path.join(__dirname, "..", "database.js"))});
+    const db = require(${databaseModule});
     const id = Number(process.env.TEST_USER_ID);
     const readyFile = process.env.TEST_READY_FILE;
     const goFile = process.env.TEST_GO_FILE;
@@ -60,6 +79,8 @@ test("PostgreSQL persistence preserves unrelated concurrent process updates", { 
   }
 
   try {
+    await bootstrapDatabase();
+
     await pool.query(`
       DELETE FROM referral_rewards WHERE referred_user_id IN ($1, $2);
       DELETE FROM team WHERE user_id IN ($1, $2);
