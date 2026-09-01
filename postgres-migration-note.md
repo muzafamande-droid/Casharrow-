@@ -1,1 +1,0 @@
-PostgreSQL migration in progress. This file is temporary and will be removed before merge.
