@@ -200,12 +200,22 @@ async function restoreFromPostgres() {
 }
 
 let syncQueue = Promise.resolve();
+let syncEnabled = false;
+
 function queueSync() {
-  if (!pool) return;
-  syncQueue = syncQueue.then(syncAllToPostgres).catch(error => console.error("PostgreSQL sync queue failed:", error));
+  if (!pool || !syncEnabled) return;
+  syncQueue = syncQueue
+    .then(syncAllToPostgres)
+    .catch(error => console.error("PostgreSQL sync queue failed:", error));
 }
 
-const ready = pool ? createPostgresSchema().then(restoreFromPostgres) : Promise.resolve();
+const ready = pool
+  ? createPostgresSchema()
+      .then(restoreFromPostgres)
+      .then(() => {
+        syncEnabled = true;
+      })
+  : Promise.resolve();
 
 const db = {
   prepare(sql) {
