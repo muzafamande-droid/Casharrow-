@@ -157,13 +157,21 @@ async function syncAllToPostgres() {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await client.query("TRUNCATE referral_rewards, team, deposits, withdrawals, transactions, rewards, tasks, users CASCADE");
+
+    // Never truncate PostgreSQL here. PostgreSQL is the durable store, so a
+    // stale SQLite snapshot must not be able to erase newer persistent data.
+    // Each row is inserted or updated by its stable primary key.
     for (const table of tables) {
       const rows = sqlite.prepare(`SELECT ${table.columns.join(", ")} FROM ${table.name}`).all();
       for (const row of rows) {
         const placeholders = table.columns.map((_, i) => `$${i + 1}`).join(", ");
+        const updates = table.columns
+          .filter(column => column !== "id")
+          .map(column => `${column} = EXCLUDED.${column}`)
+          .join(", ");
         await client.query(
-          `INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders})`,
+          `INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders})
+           ON CONFLICT (id) DO UPDATE SET ${updates}`,
           table.columns.map(column => row[column])
         );
       }
