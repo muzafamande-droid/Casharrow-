@@ -10,11 +10,21 @@
     .casharrow-deposit .deposit-note{color:#7b8494;font-size:13px;line-height:1.45;margin:8px 0 16px}
     .casharrow-deposit .deposit-status{font-size:13px;margin-top:10px;min-height:18px}
     #userWallet .actions{grid-template-columns:repeat(3,1fr)}
+    .casharrow-guest-home{display:none;text-align:center;padding:22px 4px 10px}
+    .casharrow-guest-home h2{font-size:24px;margin-bottom:8px;color:#07162f}
+    .casharrow-guest-home p{font-size:13px;line-height:1.5;color:#718096;max-width:420px;margin:0 auto 18px}
+    .casharrow-guest-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .casharrow-guest-actions button{width:100%}
+    .casharrow-guest-deposit{grid-column:1/-1;background:linear-gradient(135deg,#07162f 0%,#0b3d86 58%,#087cff 100%);color:#fff;box-shadow:0 8px 20px rgba(7,48,112,.2)}
     .bottom{background:linear-gradient(135deg,#06142f 0%,#0a2c67 50%,#087cff 100%) !important;border-top:1px solid rgba(255,255,255,.16)!important;box-shadow:0 -10px 28px rgba(7,48,112,.22)!important}
     .bottom .nav{color:rgba(255,255,255,.78)!important}
     .bottom .nav.active{color:#fff!important;background:rgba(255,255,255,.16)!important}
     .bottom .nav div{filter:drop-shadow(0 2px 5px rgba(0,0,0,.18))}
-    @media(max-width:420px){#userWallet .actions{grid-template-columns:1fr 1fr}}
+    @media(max-width:420px){
+      #userWallet .actions{grid-template-columns:1fr 1fr}
+      .casharrow-guest-home{padding-top:16px}
+      .casharrow-guest-actions{grid-template-columns:1fr}
+    }
   `;
   document.head.appendChild(style);
 
@@ -29,11 +39,50 @@
     password.insertAdjacentElement("afterend", confirm);
   }
 
+  function addGuestHome() {
+    if (document.getElementById("casharrowGuestHome")) return;
+    if (token()) return;
+
+    const container = document.querySelector("main.container");
+    if (!container) return;
+
+    const balance = container.querySelector(".balance:not(#userWallet):not(#withdrawSection):not(#userTransactions)");
+    if (balance) balance.style.display = "none";
+
+    const guestHome = document.createElement("section");
+    guestHome.className = "casharrow-guest-home";
+    guestHome.id = "casharrowGuestHome";
+    guestHome.innerHTML = `
+      <h2>Welcome to CashArrow</h2>
+      <p>Simple, secure tools for managing your CashArrow account, wallet and rewards.</p>
+      <div class="casharrow-guest-actions">
+        <button class="casharrow-guest-deposit" type="button">💳 Deposit</button>
+        <button class="primary" type="button">📝 Sign Up</button>
+        <button class="secondary" type="button">🔐 Login</button>
+      </div>
+    `;
+
+    container.insertBefore(guestHome, container.firstElementChild);
+    guestHome.style.display = "block";
+
+    const buttons = guestHome.querySelectorAll("button");
+    buttons[0].onclick = () => openModal("login");
+    buttons[1].onclick = () => openModal("register");
+    buttons[2].onclick = () => openModal("login");
+  }
+
+  function removeGuestHome() {
+    document.getElementById("casharrowGuestHome")?.remove();
+    const container = document.querySelector("main.container");
+    const balance = container?.querySelector(".balance:not(#userWallet):not(#withdrawSection):not(#userTransactions)");
+    if (balance) balance.style.display = "block";
+  }
+
   function addDepositUI() {
     if (document.getElementById("casharrowDeposit")) return;
 
     const wallet = document.getElementById("userWallet");
-    if (!wallet) return;
+    if (!wallet || !token()) return;
 
     const actions = wallet.querySelector(".actions");
     if (actions) {
@@ -211,11 +260,12 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     addConfirmPassword();
-    addDepositUI();
-    addLogoutControl();
-
     if (token()) {
-      setTimeout(showDeposit, 0);
+      removeGuestHome();
+      addDepositUI();
+    } else {
+      addGuestHome();
     }
+    addLogoutControl();
   });
 })();
