@@ -38,8 +38,9 @@ test.before(async () => {
   baseUrl = `http://127.0.0.1:${server.address().port}`;
 });
 
-test.after(() => {
+test.after(async () => {
   server.close();
+  await db.flushPersistence();
   db.close();
   fs.rmSync(path.dirname(databasePath), { recursive: true, force: true });
 });
