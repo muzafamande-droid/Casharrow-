@@ -1,8 +1,0 @@
-/* CashArrow guest landing screen */
-.casharrow-guest-home{display:none;text-align:center;padding:22px 4px 10px}
-.casharrow-guest-home h2{font-size:24px;margin-bottom:8px;color:#07162f}
-.casharrow-guest-home p{font-size:13px;line-height:1.5;color:#718096;max-width:420px;margin:0 auto 18px}
-.casharrow-guest-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.casharrow-guest-actions button{width:100%}
-.casharrow-guest-deposit{grid-column:1/-1;background:linear-gradient(135deg,#07162f 0%,#0b3d86 58%,#087cff 100%);color:#fff;box-shadow:0 8px 20px rgba(7,48,112,.2)}
-@media(max-width:420px){.casharrow-guest-home{padding-top:16px}.casharrow-guest-actions{grid-template-columns:1fr}}
