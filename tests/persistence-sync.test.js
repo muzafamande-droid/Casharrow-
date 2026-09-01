@@ -23,7 +23,31 @@ test("PostgreSQL persistence sync is non-destructive", () => {
 
   assert.match(
     databaseSource,
+    /CREATE TABLE IF NOT EXISTS _sync_changes/,
+    "local mutations must be journaled"
+  );
+
+  assert.match(
+    databaseSource,
+    /syncPendingChanges\(\)/,
+    "normal synchronization must process only journaled changes"
+  );
+
+  assert.match(
+    databaseSource,
+    /DELETE FROM _sync_changes WHERE seq <= \?/,
+    "journal entries must be cleared only after a successful sync"
+  );
+
+  assert.match(
+    databaseSource,
     /syncEnabled\s*=\s*true/,
     "PostgreSQL sync must only be enabled after restore completes"
+  );
+
+  assert.match(
+    databaseSource,
+    /flushPersistence\(\)/,
+    "tests and shutdown flows must be able to wait for queued persistence work"
   );
 });
