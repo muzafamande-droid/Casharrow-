@@ -81,16 +81,19 @@ test("PostgreSQL persistence preserves unrelated concurrent process updates", { 
   try {
     await bootstrapDatabase();
 
-    await pool.query(`
-      DELETE FROM referral_rewards WHERE referred_user_id IN ($1, $2);
-      DELETE FROM team WHERE user_id IN ($1, $2);
-      DELETE FROM transactions WHERE user_id IN ($1, $2);
-      DELETE FROM deposits WHERE user_id IN ($1, $2);
-      DELETE FROM withdrawals WHERE user_id IN ($1, $2);
-      DELETE FROM rewards WHERE user_id IN ($1, $2);
-      DELETE FROM tasks WHERE user_id IN ($1, $2);
-      DELETE FROM users WHERE id IN ($1, $2);
-    `, [userA, userB]);
+    for (const table of [
+      "referral_rewards",
+      "team",
+      "transactions",
+      "deposits",
+      "withdrawals",
+      "rewards",
+      "tasks",
+      "users"
+    ]) {
+      const column = table === "referral_rewards" ? "referred_user_id" : "user_id";
+      await pool.query(`DELETE FROM ${table} WHERE ${column} IN ($1, $2)`, [userA, userB]);
+    }
 
     await pool.query(`
       INSERT INTO users (id, phone, name, password, role, balance, wallet, referral_code)
@@ -121,10 +124,7 @@ test("PostgreSQL persistence preserves unrelated concurrent process updates", { 
       { id: userB, balance: 222 }
     ]);
   } finally {
-    await pool.query(
-      "DELETE FROM users WHERE id IN ($1, $2)",
-      [userA, userB]
-    ).catch(() => {});
+    await pool.query("DELETE FROM users WHERE id IN ($1, $2)", [userA, userB]).catch(() => {});
     await pool.end();
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
