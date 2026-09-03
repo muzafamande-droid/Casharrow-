@@ -3,22 +3,35 @@ const db = require("./database");
 const rental = require("./rental-routes");
 const withdrawal = require("./withdrawal-routes");
 const mobileMoney = require("./mobile-money-sandbox-routes");
+const pgFinancial = require("./pg-financial-routes");
 
 const PORT = process.env.PORT || 3000;
 
-// Retire the old manual deposit workflow. Automatic MTN deposits are handled
-// only by the provider-confirmed sandbox routes below.
+// Retire the legacy SQLite financial endpoints. PostgreSQL is the source of
+// truth for wallet, deposits, withdrawals, and transaction history.
 if (app._router && Array.isArray(app._router.stack)) {
+  const retiredRoutes = new Set([
+    "/api/wallet",
+    "/api/transactions",
+    "/api/deposits",
+    "/api/withdrawals",
+    "/api/admin/deposits",
+    "/api/admin/deposits/:id/approve",
+    "/api/admin/withdrawals",
+    "/api/admin/withdrawals/:id/approve",
+    "/api/admin/withdrawals/:id/reject"
+  ]);
+
   app._router.stack = app._router.stack.filter(layer => {
     if (!layer.route) return true;
     const path = layer.route.path;
-    const methods = layer.route.methods || {};
-    if (path === "/api/admin/deposits/:id/approve") return false;
-    if (path === "/api/deposits" && methods.post) return false;
-    return true;
+    return !retiredRoutes.has(path);
   });
 }
 
+// Durable financial API. Mount before the remaining compatibility routes so
+// legacy SQLite handlers cannot capture these endpoints first.
+app.use("/api", pgFinancial.router);
 app.use("/api", rental.router);
 app.use("/api", withdrawal.router);
 app.use("/api", mobileMoney.router);
