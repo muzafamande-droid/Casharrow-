@@ -23,7 +23,10 @@
     .deposit-meta{font-size:13px;line-height:1.55;color:#536174;margin-top:7px}
     .pending{color:#b26a00;font-weight:700}
     .approved{color:#0a8f52;font-weight:700}
+    .rejected{color:#d93025;font-weight:700}
     .empty{padding:12px 0;color:#718096;font-size:14px}
+    .action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .reject{background:#ffecec;color:#d93025}
   </style>
 </head>
 <body>
@@ -57,6 +60,14 @@
     <button onclick="loadDeposits()" style="margin-top:12px">🔄 Refresh Deposits</button>
     <div id="depositMessage" class="message"></div>
     <div id="depositsList">Loading deposits...</div>
+  </div>
+
+  <div class="card">
+    <h2>📤 Withdrawal Requests</h2>
+    <p class="muted">Approve only after the actual Mobile Money payout has been sent and verified. Approval deducts the user's CashArrow balance.</p>
+    <button onclick="loadWithdrawals()" style="margin-top:12px">🔄 Refresh Withdrawals</button>
+    <div id="withdrawalMessage" class="message"></div>
+    <div id="withdrawalsList">Loading withdrawals...</div>
   </div>
 
   <div class="card">
@@ -110,7 +121,7 @@ async function loadDeposits(){
     if(!data.deposits.length){list.innerHTML='<div class="empty">No deposit requests yet.</div>';return}
     list.innerHTML=data.deposits.map(deposit=>{
       const pending=deposit.status==="pending";
-      const statusClass=pending?"pending":"approved";
+      const statusClass=pending?"pending":deposit.status==="rejected"?"rejected":"approved";
       return `<div class="deposit">
         <div class="deposit-row">
           <strong>Deposit #${deposit.id} — UGX ${Number(deposit.amount).toLocaleString()}</strong>
@@ -134,6 +145,55 @@ async function approveDeposit(id,button){
   }catch(error){alert("Unable to approve deposit.");button.disabled=false}
 }
 
+async function loadWithdrawals(){
+  if(!requireToken())return;
+  const list=document.getElementById("withdrawalsList");
+  const message=document.getElementById("withdrawalMessage");
+  list.textContent="Loading withdrawals...";message.textContent="";
+  try{
+    const response=await fetch("/api/admin/withdrawals",{headers:authHeaders()});
+    const data=await response.json();
+    if(!response.ok||!data.success){message.textContent=data.message||"Unable to load withdrawals.";list.textContent="";return}
+    if(!data.withdrawals.length){list.innerHTML='<div class="empty">No withdrawal requests yet.</div>';return}
+    list.innerHTML=data.withdrawals.map(withdrawal=>{
+      const status=withdrawal.status||"pending";
+      const statusClass=status==="pending"?"pending":status==="rejected"?"rejected":"approved";
+      return `<div class="deposit">
+        <div class="deposit-row">
+          <strong>Withdrawal #${withdrawal.id} — UGX ${Number(withdrawal.amount).toLocaleString()}</strong>
+          <span class="${statusClass}">${status}</span>
+        </div>
+        <div class="deposit-meta">User: ${withdrawal.name||"—"} (ID ${withdrawal.user_id})<br>Phone: ${withdrawal.phone||"—"}<br>Mobile Money: ${withdrawal.account||"—"}<br>Status: <span class="${statusClass}">${status}</span><br>Submitted: ${withdrawal.date||"—"}${withdrawal.approved_at?`<br>Processed: ${withdrawal.approved_at}`:""}</div>
+        ${status==="pending"?`<div class="action-row"><button onclick="approveWithdrawal(${withdrawal.id},this)">Approve</button><button class="reject" onclick="rejectWithdrawal(${withdrawal.id},this)">Reject</button></div>`:""}
+      </div>`;
+    }).join("");
+  }catch(error){message.textContent="Unable to load withdrawals.";list.textContent=""}
+}
+
+async function approveWithdrawal(id,button){
+  if(!requireToken())return;
+  if(!confirm("Confirm that the actual Mobile Money payout has already been sent and verified. Approve withdrawal #"+id+"?"))return;
+  button.disabled=true;
+  try{
+    const response=await fetch("/api/admin/withdrawals/"+id+"/approve",{method:"POST",headers:authHeaders(true)});
+    const data=await response.json();
+    if(!response.ok||!data.success){alert(data.message||"Withdrawal approval failed.");button.disabled=false;return}
+    await Promise.all([loadWithdrawals(),loadDashboard(),loadUsers()]);
+  }catch(error){alert("Unable to approve withdrawal.");button.disabled=false}
+}
+
+async function rejectWithdrawal(id,button){
+  if(!requireToken())return;
+  if(!confirm("Reject withdrawal #"+id+"? The user's balance will not be deducted."))return;
+  button.disabled=true;
+  try{
+    const response=await fetch("/api/admin/withdrawals/"+id+"/reject",{method:"POST",headers:authHeaders(true)});
+    const data=await response.json();
+    if(!response.ok||!data.success){alert(data.message||"Withdrawal rejection failed.");button.disabled=false;return}
+    await loadWithdrawals();
+  }catch(error){alert("Unable to reject withdrawal.");button.disabled=false}
+}
+
 async function loadUsers(){
   if(!requireToken())return;
   try{
@@ -148,7 +208,7 @@ async function loadUsers(){
 
 function logout(){localStorage.removeItem("casharrowToken");localStorage.removeItem("casharrowUser");window.location.href="/"}
 
-checkAdmin();loadDashboard();loadUsers();loadDeposits();
+checkAdmin();loadDashboard();loadUsers();loadDeposits();loadWithdrawals();
 </script>
 </body>
 </html>
