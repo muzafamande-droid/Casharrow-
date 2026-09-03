@@ -42,6 +42,7 @@ async function init() {
       role TEXT NOT NULL DEFAULT 'user',
       balance NUMERIC(18,2) NOT NULL DEFAULT 0,
       wallet NUMERIC(18,2) NOT NULL DEFAULT 0,
+      reserved_balance NUMERIC(18,2) NOT NULL DEFAULT 0,
       last_salary NUMERIC(18,2) NOT NULL DEFAULT 0,
       this_salary NUMERIC(18,2) NOT NULL DEFAULT 0,
       share NUMERIC(18,2) NOT NULL DEFAULT 0,
@@ -71,6 +72,7 @@ async function init() {
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       type TEXT NOT NULL,
       amount NUMERIC(18,2) NOT NULL,
+      reference TEXT,
       date TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS withdrawals (
@@ -78,7 +80,10 @@ async function init() {
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       amount NUMERIC(18,2) NOT NULL,
       account TEXT NOT NULL,
+      network TEXT,
       status TEXT NOT NULL DEFAULT 'pending',
+      provider_reference TEXT,
+      idempotency_key TEXT,
       date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       approved_at TIMESTAMPTZ
     );
@@ -89,6 +94,8 @@ async function init() {
       network TEXT NOT NULL,
       account TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
+      provider_reference TEXT,
+      idempotency_key TEXT,
       date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       approved_at TIMESTAMPTZ
     );
@@ -133,11 +140,18 @@ async function init() {
     CREATE INDEX IF NOT EXISTS idx_referral_referrer ON referral_rewards(referrer_id);
   `);
 
-  // Existing deployments may have the older DOUBLE PRECISION columns.
-  // NUMERIC avoids binary floating-point rounding for money.
+  // Add columns required by newer deployments without destroying existing data.
+  await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS reserved_balance NUMERIC(18,2) NOT NULL DEFAULT 0");
+  await query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS reference TEXT");
+  await query("ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS network TEXT");
+  await query("ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS provider_reference TEXT");
+  await query("ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS idempotency_key TEXT");
+  await query("ALTER TABLE deposits ADD COLUMN IF NOT EXISTS provider_reference TEXT");
+  await query("ALTER TABLE deposits ADD COLUMN IF NOT EXISTS idempotency_key TEXT");
+
   for (const table of ["users", "tasks", "rewards", "transactions", "withdrawals", "deposits", "team", "referral_rewards"]) {
     const moneyColumns = {
-      users: ["balance", "wallet", "last_salary", "this_salary", "share"],
+      users: ["balance", "wallet", "reserved_balance", "last_salary", "this_salary", "share"],
       tasks: ["reward"],
       rewards: ["amount"],
       transactions: ["amount"],
@@ -150,6 +164,11 @@ async function init() {
       await query(`ALTER TABLE ${table} ALTER COLUMN ${column} TYPE NUMERIC(18,2) USING ${column}::numeric`);
     }
   }
+
+  await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_deposits_idempotency_key ON deposits(idempotency_key) WHERE idempotency_key IS NOT NULL");
+  await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_deposits_provider_reference ON deposits(provider_reference) WHERE provider_reference IS NOT NULL");
+  await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_withdrawals_idempotency_key ON withdrawals(idempotency_key) WHERE idempotency_key IS NOT NULL");
+  await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_withdrawals_provider_reference ON withdrawals(provider_reference) WHERE provider_reference IS NOT NULL");
 
   const admin = await query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
   if (admin.rowCount === 0) {
