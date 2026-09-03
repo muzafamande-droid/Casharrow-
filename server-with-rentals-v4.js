@@ -35,9 +35,7 @@ if (app._router && Array.isArray(app._router.stack)) {
   });
 }
 
-// Durable PostgreSQL account and financial APIs are mounted before the
-// remaining compatibility routes so retired SQLite handlers cannot capture
-// these endpoints first.
+// Durable PostgreSQL account, financial, rental, and Mobile Money APIs.
 app.use("/api", accountPg.router);
 app.use("/api", pgFinancial.router);
 app.use("/api", rental.router);
@@ -47,8 +45,8 @@ app.use("/api", mobileMoney.router);
 const originalSend = app.response.send;
 app.response.send = function (body) {
   if (this.req && this.req.path === "/" && typeof body === "string" && body.includes("</body>")) {
-    body = body.replace(/<script src="\/casharrow-enhancements\\.js"><\/script>/g, '<script src="/casharrow-enhancements.js?v=auto-mm4"></script>');
-    body = body.replace("</body>", '  <style>#casharrowMemberProducts.casharrow-member-products{display:none!important}#casharrowGuestHome .casharrow-products{display:none!important}</style><script>(()=>{const r=()=>{document.getElementById("casharrowMemberProducts")?.remove();document.querySelector("#casharrowGuestHome .casharrow-products")?.remove()};document.addEventListener("DOMContentLoaded",r);new MutationObserver(r).observe(document.documentElement,{childList:true,subtree:true})})();</script><script src="/rental-ui.js?v=9377459"></script><script src="/account-button-fix.js?v=1"></script><script src="/mobile-money-ui.js?v=auto-mm4"></script></body>');
+    body = body.replace(/<script src="\/casharrow-enhancements\\.js"><\/script>/g, '<script src="/casharrow-enhancements.js?v=clean1"></script>');
+    body = body.replace("</body>", '  <script src="/rental-ui.js?v=clean1"></script><script src="/account-button-fix.js?v=1"></script><script src="/mobile-money-ui.js?v=auto-mm4"></script></body>');
   }
   return originalSend.call(this, body);
 };
