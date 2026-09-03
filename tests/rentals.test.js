@@ -36,7 +36,6 @@ test.before(async () => {
   await pgDb.init();
   await rental.ready();
   await pgDb.query("DELETE FROM users WHERE phone = $1", [testPhone]);
-  await pgDb.query("UPDATE products SET rental_fee = 0, rental_days = 0, return_amount = 0, active = false WHERE code = 'A1'");
   server = app.listen(0);
   await new Promise(resolve => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -46,11 +45,10 @@ test.after(async () => {
   await new Promise(resolve => server.close(resolve));
   await pgDb.query("DELETE FROM rentals WHERE user_id IN (SELECT id FROM users WHERE phone = $1)", [testPhone]);
   await pgDb.query("DELETE FROM users WHERE phone = $1", [testPhone]);
-  await pgDb.query("UPDATE products SET rental_fee = 0, rental_days = 0, return_amount = 0, active = false WHERE code = 'A1'");
   await pgDb.close();
 });
 
-test("product catalog contains the four series and twenty products", async () => {
+test("product catalog contains the four series, twenty products, and the configured policy", async () => {
   const response = await fetch(`${baseUrl}/api/products`);
   const data = await response.json();
   assert.equal(response.status, 200);
@@ -59,9 +57,15 @@ test("product catalog contains the four series and twenty products", async () =>
     data.products.filter(product => product.featured).map(product => product.code),
     ["A1", "B1", "C1", "D1"]
   );
+
+  const a1 = data.products.find(product => product.code === "A1");
+  assert.equal(Number(a1.rental_fee), 30000);
+  assert.equal(Number(a1.rental_days), 18);
+  assert.equal(Number(a1.return_amount), 45000);
+  assert.equal(a1.active, true);
 });
 
-test("rental checkout stays blocked until a product is activated and configured", async () => {
+test("configured rental checkout rejects a user without sufficient balance", async () => {
   const registration = await post("/api/register", {
     phone: testPhone,
     name: "Rental User",
@@ -76,29 +80,39 @@ test("rental checkout stays blocked until a product is activated and configured"
 
   const response = await post("/api/rentals", { productId: product.id }, loginData.token);
   const data = await response.json();
-  assert.equal(response.status, 409);
-  assert.match(data.message, /not available/i);
+  assert.equal(response.status, 400);
+  assert.match(data.message, /insufficient balance/i);
 });
 
 test("configured rental deducts wallet balance and cannot complete before its end date", async () => {
   const user = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [testPhone])).rows[0];
   const product = (await pgDb.query("SELECT id FROM products WHERE code = 'A1'")).rows[0];
-  await pgDb.query("UPDATE products SET rental_fee = 1000, rental_days = 30, return_amount = 1500, active = true WHERE id = $1", [product.id]);
   await pgDb.query("UPDATE users SET balance = 5000, wallet = 5000 WHERE id = $1", [user.id]);
 
   const { data: loginData } = await login(testPhone, "password");
   const response = await post("/api/rentals", { productId: product.id }, loginData.token);
   const data = await response.json();
-  assert.equal(response.status, 201);
-  assert.equal(data.success, true);
+  assert.equal(response.status, 400);
+
+  // The real A1 policy costs UGX 30,000, so the test user must be funded above that amount.
+  assert.match(data.message, /insufficient balance/i);
+
+  await pgDb.query("UPDATE users SET balance = 50000, wallet = 50000 WHERE id = $1", [user.id]);
+  const fundedResponse = await post("/api/rentals", { productId: product.id }, loginData.token);
+  const fundedData = await fundedResponse.json();
+  assert.equal(fundedResponse.status, 201);
+  assert.equal(fundedData.success, true);
 
   const updatedUser = (await pgDb.query("SELECT balance FROM users WHERE id = $1", [user.id])).rows[0];
-  assert.equal(Number(updatedUser.balance), 4000);
+  assert.equal(Number(updatedUser.balance), 20000);
 
-  const rentalRow = (await pgDb.query("SELECT * FROM rentals WHERE id = $1", [data.rentalId])).rows[0];
+  const rentalRow = (await pgDb.query("SELECT * FROM rentals WHERE id = $1", [fundedData.rentalId])).rows[0];
   assert.equal(rentalRow.status, "active");
+  assert.equal(Number(rentalRow.rental_fee), 30000);
+  assert.equal(Number(rentalRow.rental_days), 18);
+  assert.equal(Number(rentalRow.return_amount), 45000);
 
-  const earlyComplete = await post(`/api/rentals/${data.rentalId}/complete`, {}, loginData.token);
+  const earlyComplete = await post(`/api/rentals/${fundedData.rentalId}/complete`, {}, loginData.token);
   assert.equal(earlyComplete.status, 409);
   assert.match((await earlyComplete.json()).message, /has not ended/i);
 });
