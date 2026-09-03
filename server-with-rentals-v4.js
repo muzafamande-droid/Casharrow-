@@ -39,10 +39,12 @@ app.response.send = function (body) {
     const guestBootstrapStyle = '<style id="casharrowGuestBootstrap">body.ca-prelogin .container>.balance,body.ca-prelogin .container>.section,body.ca-prelogin #todayTasks,body.ca-prelogin #rewardsSection,body.ca-prelogin #teamSection,body.ca-prelogin #withdrawSection,body.ca-prelogin #userTransactions,body.ca-prelogin .bottom{display:none!important}</style>';
     const guestBootstrapScript = '<script>try{if(!localStorage.getItem("casharrowToken"))document.body.classList.add("ca-prelogin")}catch(e){}</script>';
     body = body.replace("</head>", `${guestBootstrapStyle}</head>`);
-    body = body.replace("<body", `<body>${guestBootstrapScript}`);
-    body = body.replace(/<script src="\/casharrow-enhancements\.js"><\/script>/g, '<script src="/casharrow-enhancements.js?v=clean4"></script>');
+    // Insert the bootstrap script inside the opening body tag. The previous
+    // replacement could create malformed HTML when <body> had attributes.
+    body = body.replace(/<body(\b[^>]*)>/i, `<body$1>${guestBootstrapScript}`);
+    body = body.replace(/<script src="\/casharrow-enhancements\.js"><\/script>/g, '<script src="/casharrow-enhancements.js?v=clean5"></script>');
     body = body.replace(/\s*<script src="\/rental-ui\.js[^>]*><\/script>/g, "");
-    body = body.replace("</body>", '  <script src="/rental-catalog.js?v=final2"></script></body>');
+    body = body.replace("</body>", '  <script src="/rental-catalog.js?v=final3"></script></body>');
   }
   return originalSend.call(this, body);
 };
