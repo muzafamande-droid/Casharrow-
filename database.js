@@ -138,6 +138,42 @@ const tables = [
   { name: "referral_rewards", columns: ["id","referrer_id","referred_user_id","amount","created_at"] }
 ];
 
+// Record only local mutations. This prevents a second app process with an
+// older SQLite snapshot from pushing unrelated stale rows into PostgreSQL.
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS _sync_changes (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name TEXT NOT NULL,
+    row_id INTEGER NOT NULL,
+    operation TEXT NOT NULL
+  );
+`);
+
+for (const table of tables) {
+  sqlite.exec(`
+    CREATE TRIGGER IF NOT EXISTS ${table.name}_sync_insert
+    AFTER INSERT ON ${table.name}
+    BEGIN
+      INSERT INTO _sync_changes (table_name, row_id, operation)
+      VALUES ('${table.name}', NEW.id, 'upsert');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS ${table.name}_sync_update
+    AFTER UPDATE ON ${table.name}
+    BEGIN
+      INSERT INTO _sync_changes (table_name, row_id, operation)
+      VALUES ('${table.name}', NEW.id, 'upsert');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS ${table.name}_sync_delete
+    AFTER DELETE ON ${table.name}
+    BEGIN
+      INSERT INTO _sync_changes (table_name, row_id, operation)
+      VALUES ('${table.name}', OLD.id, 'delete');
+    END;
+  `);
+}
+
 async function createPostgresSchema() {
   if (!pool) return;
   await pool.query(`
@@ -157,13 +193,18 @@ async function syncAllToPostgres() {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await client.query("TRUNCATE referral_rewards, team, deposits, withdrawals, transactions, rewards, tasks, users CASCADE");
+
     for (const table of tables) {
       const rows = sqlite.prepare(`SELECT ${table.columns.join(", ")} FROM ${table.name}`).all();
       for (const row of rows) {
         const placeholders = table.columns.map((_, i) => `$${i + 1}`).join(", ");
+        const updates = table.columns
+          .filter(column => column !== "id")
+          .map(column => `${column} = EXCLUDED.${column}`)
+          .join(", ");
         await client.query(
-          `INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders})`,
+          `INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders})
+           ON CONFLICT (id) DO UPDATE SET ${updates}`,
           table.columns.map(column => row[column])
         );
       }
@@ -171,7 +212,60 @@ async function syncAllToPostgres() {
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("PostgreSQL synchronization failed:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function syncPendingChanges() {
+  if (!pool) return;
+  const changes = sqlite
+    .prepare("SELECT seq, table_name, row_id, operation FROM _sync_changes ORDER BY seq")
+    .all();
+
+  if (!changes.length) return;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    for (const change of changes) {
+      const table = tables.find(item => item.name === change.table_name);
+      if (!table) continue;
+
+      if (change.operation === "delete") {
+        await client.query(`DELETE FROM ${table.name} WHERE id = $1`, [change.row_id]);
+        continue;
+      }
+
+      const row = sqlite
+        .prepare(`SELECT ${table.columns.join(", ")} FROM ${table.name} WHERE id = ?`)
+        .get(change.row_id);
+
+      // The row may have been deleted after the journal event was recorded.
+      // The later delete event remains in the journal and will be applied too.
+      if (!row) continue;
+
+      const placeholders = table.columns.map((_, i) => `$${i + 1}`).join(", ");
+      const updates = table.columns
+        .filter(column => column !== "id")
+        .map(column => `${column} = EXCLUDED.${column}`)
+        .join(", ");
+      await client.query(
+        `INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders})
+         ON CONFLICT (id) DO UPDATE SET ${updates}`,
+        table.columns.map(column => row[column])
+      );
+    }
+
+    await client.query("COMMIT");
+
+    const maxSeq = changes[changes.length - 1].seq;
+    sqlite.prepare("DELETE FROM _sync_changes WHERE seq <= ?").run(maxSeq);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
   } finally {
     client.release();
   }
@@ -182,6 +276,7 @@ async function restoreFromPostgres() {
   const pgCount = Number((await pool.query("SELECT COUNT(*) AS count FROM users")).rows[0].count);
   if (!pgCount) {
     await syncAllToPostgres();
+    sqlite.prepare("DELETE FROM _sync_changes").run();
     return;
   }
 
@@ -197,6 +292,7 @@ async function restoreFromPostgres() {
     restore(rows);
   }
   sqlite.exec("PRAGMA foreign_keys = ON");
+  sqlite.prepare("DELETE FROM _sync_changes").run();
 }
 
 let syncQueue = Promise.resolve();
@@ -205,7 +301,7 @@ let syncEnabled = false;
 function queueSync() {
   if (!pool || !syncEnabled) return;
   syncQueue = syncQueue
-    .then(syncAllToPostgres)
+    .then(syncPendingChanges)
     .catch(error => console.error("PostgreSQL sync queue failed:", error));
 }
 
@@ -247,7 +343,10 @@ const db = {
     sqlite.close();
     if (pool) pool.end().catch(error => console.error("PostgreSQL close failed:", error));
   },
-  ready
+  ready,
+  flushPersistence() {
+    return ready.then(() => syncQueue);
+  }
 };
 
 module.exports = db;
