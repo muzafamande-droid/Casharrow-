@@ -33,8 +33,13 @@ app.use("/api", mobileMoney.router);
 const originalSend = app.response.send;
 app.response.send = function (body) {
   if (this.req && this.req.path === "/" && typeof body === "string" && body.includes("</body>")) {
-    body = body.replace(/<script src="\/casharrow-enhancements\.js"><\/script>/g, '<script src="/casharrow-enhancements.js?v=clean1"></script>');
-    body = body.replace("</body>", '  <script src="/rental-ui.js?v=clean1"></script><script src="/account-button-fix.js?v=1"></script><script src="/mobile-money-ui.js?v=auto-mm4"></script></body>');
+    // Prevent the old member dashboard from flashing before rental-ui.js decides
+    // whether this visitor is a guest or an authenticated member.
+    const guestBootstrap = '<style id="casharrowGuestBootstrap">body.ca-prelogin .container>.balance,body.ca-prelogin .container>.section,body.ca-prelogin #todayTasks,body.ca-prelogin #rewardsSection,body.ca-prelogin #teamSection,body.ca-prelogin #withdrawSection,body.ca-prelogin #userTransactions,body.ca-prelogin .bottom{display:none!important}</style><script>try{if(!localStorage.getItem("casharrowToken"))document.body.classList.add("ca-prelogin")}catch(e){}</script>';
+    body = body.replace("<body", guestBootstrap + "<body");
+    body = body.replace(/<script src="\/casharrow-enhancements\.js"><\/script>/g,
+      '<script src="/casharrow-enhancements.js?v=clean2"></script>');
+    body = body.replace("</body>", '  <script src="/rental-ui.js?v=clean2"></script><script src="/account-button-fix.js?v=1"></script><script src="/mobile-money-ui.js?v=auto-mm4"></script></body>');
   }
   return originalSend.call(this, body);
 };
