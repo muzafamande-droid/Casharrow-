@@ -138,8 +138,6 @@ const tables = [
   { name: "referral_rewards", columns: ["id","referrer_id","referred_user_id","amount","created_at"] }
 ];
 
-// Record only local mutations. This prevents a second app process with an
-// older SQLite snapshot from pushing unrelated stale rows into PostgreSQL.
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS _sync_changes (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -193,82 +191,47 @@ async function syncAllToPostgres() {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-
     for (const table of tables) {
       const rows = sqlite.prepare(`SELECT ${table.columns.join(", ")} FROM ${table.name}`).all();
       for (const row of rows) {
         const placeholders = table.columns.map((_, i) => `$${i + 1}`).join(", ");
-        const updates = table.columns
-          .filter(column => column !== "id")
-          .map(column => `${column} = EXCLUDED.${column}`)
-          .join(", ");
-        await client.query(
-          `INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders})
-           ON CONFLICT (id) DO UPDATE SET ${updates}`,
-          table.columns.map(column => row[column])
-        );
+        const updates = table.columns.filter(column => column !== "id").map(column => `${column} = EXCLUDED.${column}`).join(", ");
+        await client.query(`INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updates}`, table.columns.map(column => row[column]));
       }
     }
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
-  } finally {
-    client.release();
-  }
+  } finally { client.release(); }
 }
 
 async function syncPendingChanges() {
   if (!pool) return;
-  const changes = sqlite
-    .prepare("SELECT seq, table_name, row_id, operation FROM _sync_changes ORDER BY seq")
-    .all();
-
+  const changes = sqlite.prepare("SELECT seq, table_name, row_id, operation FROM _sync_changes ORDER BY seq").all();
   if (!changes.length) return;
-
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-
     for (const change of changes) {
       const table = tables.find(item => item.name === change.table_name);
       if (!table) continue;
-
       if (change.operation === "delete") {
         await client.query(`DELETE FROM ${table.name} WHERE id = $1`, [change.row_id]);
         continue;
       }
-
-      const row = sqlite
-        .prepare(`SELECT ${table.columns.join(", ")} FROM ${table.name} WHERE id = ?`)
-        .get(change.row_id);
-
-      // The row may have been deleted after the journal event was recorded.
-      // The later delete event remains in the journal and will be applied too.
+      const row = sqlite.prepare(`SELECT ${table.columns.join(", ")} FROM ${table.name} WHERE id = ?`).get(change.row_id);
       if (!row) continue;
-
       const placeholders = table.columns.map((_, i) => `$${i + 1}`).join(", ");
-      const updates = table.columns
-        .filter(column => column !== "id")
-        .map(column => `${column} = EXCLUDED.${column}`)
-        .join(", ");
-      await client.query(
-        `INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders})
-         ON CONFLICT (id) DO UPDATE SET ${updates}`,
-        table.columns.map(column => row[column])
-      );
+      const updates = table.columns.filter(column => column !== "id").map(column => `${column} = EXCLUDED.${column}`).join(", ");
+      await client.query(`INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updates}`, table.columns.map(column => row[column]));
     }
-
     await client.query("COMMIT");
-
-    const maxSeq = changes[changes.length - 1].seq;
-    sqlite.prepare("DELETE FROM _sync_changes WHERE seq <= ?").run(maxSeq);
+    sqlite.prepare("DELETE FROM _sync_changes WHERE seq <= ?").run(changes[changes.length - 1].seq);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
-  } finally {
-    client.release();
-  }
+  } finally { client.release(); }
 }
 
 async function restoreFromPostgres() {
@@ -287,7 +250,10 @@ async function restoreFromPostgres() {
     if (!rows.length) continue;
     const insert = sqlite.prepare(`INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${table.columns.map(() => "?").join(", ")})`);
     const restore = sqlite.transaction(items => {
-      for (const row of items) insert.run(...table.columns.map(column => row[column]));
+      for (const row of items) {
+        const values = table.columns.map(column => row[column] === undefined ? null : row[column]);
+        insert.run(...values);
+      }
     });
     restore(rows);
   }
@@ -300,17 +266,11 @@ let syncEnabled = false;
 
 function queueSync() {
   if (!pool || !syncEnabled) return;
-  syncQueue = syncQueue
-    .then(syncPendingChanges)
-    .catch(error => console.error("PostgreSQL sync queue failed:", error));
+  syncQueue = syncQueue.then(syncPendingChanges).catch(error => console.error("PostgreSQL sync queue failed:", error));
 }
 
 const ready = pool
-  ? createPostgresSchema()
-      .then(restoreFromPostgres)
-      .then(() => {
-        syncEnabled = true;
-      })
+  ? createPostgresSchema().then(restoreFromPostgres).then(() => { syncEnabled = true; })
   : Promise.resolve();
 
 const db = {
@@ -319,34 +279,17 @@ const db = {
     return {
       get: (...params) => statement.get(...params),
       all: (...params) => statement.all(...params),
-      run: (...params) => {
-        const result = statement.run(...params);
-        queueSync();
-        return result;
-      }
+      run: (...params) => { const result = statement.run(...params); queueSync(); return result; }
     };
   },
   transaction(fn) {
     const transaction = sqlite.transaction(fn);
-    return (...args) => {
-      const result = transaction(...args);
-      queueSync();
-      return result;
-    };
+    return (...args) => { const result = transaction(...args); queueSync(); return result; };
   },
-  exec(sql) {
-    const result = sqlite.exec(sql);
-    queueSync();
-    return result;
-  },
-  close() {
-    sqlite.close();
-    if (pool) pool.end().catch(error => console.error("PostgreSQL close failed:", error));
-  },
+  exec(sql) { const result = sqlite.exec(sql); queueSync(); return result; },
+  close() { sqlite.close(); if (pool) pool.end().catch(error => console.error("PostgreSQL close failed:", error)); },
   ready,
-  flushPersistence() {
-    return ready.then(() => syncQueue);
-  }
+  flushPersistence() { return ready.then(() => syncQueue); }
 };
 
 module.exports = db;
