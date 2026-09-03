@@ -10,8 +10,6 @@ const pgFinancial = require("./pg-financial-routes");
 
 const PORT = process.env.PORT || 3000;
 
-// PostgreSQL is the only operational source of truth. Remove legacy SQLite
-// routes before mounting the durable PostgreSQL implementations.
 if (app._router && Array.isArray(app._router.stack)) {
   const retiredRoutes = new Set([
     "/api/register", "/api/login", "/api/admin", "/api/admin/dashboard", "/api/admin/users",
@@ -30,9 +28,6 @@ app.use("/api", rental.router);
 app.use("/api", withdrawal.router);
 app.use("/api", mobileMoney.router);
 
-// Keep homepage bootstrapping in one place. server.js already injects the
-// enhancement script. The server also supplies a static rental fallback so
-// the series cannot disappear when client-side JavaScript fails or is cached.
 const originalSend = app.response.send;
 app.response.send = function (body) {
   if (this.req && this.req.path === "/" && typeof body === "string" && body.includes("</body>")) {
@@ -42,11 +37,8 @@ app.response.send = function (body) {
     const rentalFallback = `<section id="casharrowStaticRentals" class="ca-static-rentals"><h2>🏹 Rental Products</h2><p class="lead">Choose a CashArrow series. Select a product to view its rental terms.</p><details class="ca-static-series" open><summary>A Series <span>18 days · 5 products</span></summary><div class="ca-static-products"><div class="ca-static-product"><b>A1</b><span>UGX 30,000 → UGX 45,000<br>18 days</span></div><div class="ca-static-product"><b>A2</b><span>UGX 70,000 → UGX 250,000<br>18 days</span></div><div class="ca-static-product"><b>A3</b><span>UGX 100,000 → UGX 400,000<br>18 days</span></div><div class="ca-static-product"><b>A4</b><span>UGX 150,000 → UGX 600,000<br>18 days</span></div><div class="ca-static-product"><b>A5</b><span>UGX 200,000 → UGX 850,000<br>18 days</span></div></div></details><details class="ca-static-series"><summary>B Series <span>28 days · 5 products</span></summary><div class="ca-static-products"><div class="ca-static-product"><b>B1</b><span>UGX 40,000 → UGX 240,000<br>28 days</span></div><div class="ca-static-product"><b>B2</b><span>UGX 80,000 → UGX 600,000<br>28 days</span></div><div class="ca-static-product"><b>B3</b><span>UGX 100,000 → UGX 1,280,000<br>28 days</span></div><div class="ca-static-product"><b>B4</b><span>UGX 250,000 → UGX 3,040,000<br>28 days</span></div><div class="ca-static-product"><b>B5</b><span>UGX 450,000 → UGX 4,150,000<br>28 days</span></div></div></details><details class="ca-static-series"><summary>C Series <span>100 days · 5 products</span></summary><div class="ca-static-products"><div class="ca-static-product"><b>C1</b><span>UGX 100,000 → UGX 1,200,000<br>100 days</span></div><div class="ca-static-product"><b>C2</b><span>UGX 250,000 → UGX 2,080,000<br>100 days</span></div><div class="ca-static-product"><b>C3</b><span>UGX 400,000 → UGX 4,450,000<br>100 days</span></div><div class="ca-static-product"><b>C4</b><span>UGX 500,000 → UGX 6,800,000<br>100 days</span></div><div class="ca-static-product"><b>C5</b><span>UGX 800,000 → UGX 11,250,000<br>100 days</span></div></div></details><details class="ca-static-series"><summary>D Series <span>120 days · 5 products</span></summary><div class="ca-static-products"><div class="ca-static-product"><b>D1</b><span>UGX 200,000 → UGX 4,000,000<br>120 days</span></div><div class="ca-static-product"><b>D2</b><span>UGX 350,000 → UGX 6,500,000<br>120 days</span></div><div class="ca-static-product"><b>D3</b><span>UGX 500,000 → UGX 8,000,000<br>120 days</span></div><div class="ca-static-product"><b>D4</b><span>UGX 850,000 → UGX 18,050,000<br>120 days</span></div><div class="ca-static-product"><b>D5</b><span>UGX 1,000,000 → UGX 22,000,000<br>120 days</span></div></div></details></section>`;
     body = body.replace("</head>", `${guestBootstrapStyle}${rentalFallbackStyle}</head>`);
     body = body.replace(/<body(\b[^>]*)>/i, `<body$1>${guestBootstrapScript}`);
-    // Place a server-rendered fallback immediately after the main container.
-    if (!body.includes('id="casharrowStaticRentals"')) {
-      body = body.replace(/<\/main>/i, `</main>${rentalFallback}`);
-    }
-    body = body.replace(/<script src="\/casharrow-enhancements\.js"><\/script>/g, '<script src="/casharrow-enhancements.js?v=clean6"></script>');
+    if (!body.includes('id="casharrowStaticRentals"')) body = body.replace(/<\/main>/i, `</main>${rentalFallback}`);
+    body = body.replace(/<script src="\/casharrow-enhancements\.js(?:\?[^>]*)?><\/script>/g, '<script src="/casharrow-enhancements.js?v=clean7"></script>');
     body = body.replace(/\s*<script src="\/rental-ui\.js[^>]*><\/script>/g, "");
     body = body.replace("</body>", '  <script src="/rental-catalog.js?v=final4"></script></body>');
   }
