@@ -1,9 +1,10 @@
 const app = require("./server-legacy");
 
-// Use the authoritative PostgreSQL/rental server whenever the hosting
-// platform launches `node server.js` directly.
+// Export the Express app before loading the authoritative wrapper.
+// This prevents a CommonJS circular dependency when Render runs
+// `node server.js` directly.
+module.exports = app;
+
 if (require.main === module) {
   require("./server-with-rentals-v4");
 }
-
-module.exports = app;
