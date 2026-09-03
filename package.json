@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server-with-rentals-v3.js",
+    "start": "node server-with-rentals-v4.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js"
   },
   "dependencies": {
@@ -12,6 +12,7 @@
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
+    "better-sqlite3": "^11.5.0",
     "pg": "^8.16.3"
   }
 }
