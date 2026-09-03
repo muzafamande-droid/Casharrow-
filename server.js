@@ -102,6 +102,29 @@ const registerUser = db.transaction(({ phone, name, password, referralCode }) =>
     WHERE id = ?
   `).run(newReferralCode, newUserId);
 
+  // Give every new member their own task/reward records.
+  db.prepare(`
+    INSERT INTO tasks (user_id, title, reward, done)
+    VALUES (?, 'Invite 3 friends', 500, 0)
+  `).run(newUserId);
+  db.prepare(`
+    INSERT INTO tasks (user_id, title, reward, done)
+    VALUES (?, 'Daily check-in', 50, 0)
+  `).run(newUserId);
+  db.prepare(`
+    INSERT INTO tasks (user_id, title, reward, done)
+    VALUES (?, 'Share app', 200, 0)
+  `).run(newUserId);
+
+  db.prepare(`
+    INSERT INTO rewards (user_id, title, amount, claimed)
+    VALUES (?, 'Welcome', 0, 1)
+  `).run(newUserId);
+  db.prepare(`
+    INSERT INTO rewards (user_id, title, amount, claimed)
+    VALUES (?, 'VIP Bonus', 500, 0)
+  `).run(newUserId);
+
   if (referrer) {
     const reward = db.prepare(`
       INSERT INTO referral_rewards
@@ -118,9 +141,9 @@ const registerUser = db.transaction(({ phone, name, password, referralCode }) =>
 
       db.prepare(`
         UPDATE users
-        SET balance = balance + ?
+        SET balance = balance + ?, wallet = wallet + ?
         WHERE id = ?
-      `).run(REFERRAL_REWARD, referrer.id);
+      `).run(REFERRAL_REWARD, REFERRAL_REWARD, referrer.id);
 
       db.prepare(`
         INSERT INTO transactions
@@ -554,28 +577,270 @@ app.post("/api/withdrawals", authenticateToken, (req, res) => {
   }
 });
 
-// Tasks
-app.get("/api/tasks", (req, res) => {
-  const tasks = db
-    .prepare("SELECT id, title, reward, done FROM tasks ORDER BY id DESC")
-    .all();
+// Ensure existing members also receive the standard task/reward records.
+function ensureUserActivities(userId) {
+  const taskDefaults = [
+    ["Invite 3 friends", 500],
+    ["Daily check-in", 50],
+    ["Share app", 200]
+  ];
 
-  res.json({
-    success: true,
-    tasks
-  });
+  for (const [title, reward] of taskDefaults) {
+    const exists = db.prepare(`
+      SELECT id FROM tasks WHERE user_id = ? AND title = ?
+    `).get(userId, title);
+
+    if (!exists) {
+      db.prepare(`
+        INSERT INTO tasks (user_id, title, reward, done)
+        VALUES (?, ?, ?, 0)
+      `).run(userId, title, reward);
+    }
+  }
+
+  const rewardDefaults = [
+    ["Welcome", 0, 1],
+    ["VIP Bonus", 500, 0]
+  ];
+
+  for (const [title, amount, claimed] of rewardDefaults) {
+    const exists = db.prepare(`
+      SELECT id FROM rewards WHERE user_id = ? AND title = ?
+    `).get(userId, title);
+
+    if (!exists) {
+      db.prepare(`
+        INSERT INTO rewards (user_id, title, amount, claimed)
+        VALUES (?, ?, ?, ?)
+      `).run(userId, title, amount, claimed);
+    }
+  }
+}
+
+// Tasks - only the authenticated member's tasks are returned.
+app.get("/api/tasks", authenticateToken, (req, res) => {
+  try {
+    ensureUserActivities(req.user.id);
+
+    const tasks = db.prepare(`
+      SELECT id, title, reward,
+        CASE
+          WHEN title = 'Daily check-in'
+            THEN CASE WHEN date((SELECT last_checkin FROM users WHERE id = ?)) = date('now') THEN 1 ELSE 0 END
+          ELSE done
+        END AS done
+      FROM tasks
+      WHERE user_id = ?
+      ORDER BY id DESC
+    `).all(req.user.id, req.user.id);
+
+    res.json({
+      success: true,
+      tasks
+    });
+  } catch (error) {
+    console.error("Loading tasks failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to load tasks"
+    });
+  }
 });
 
-// Rewards
-app.get("/api/rewards", (req, res) => {
-  const rewards = db
-    .prepare("SELECT id, title, amount, claimed FROM rewards ORDER BY id DESC")
-    .all();
+// Daily check-in is the only task that can be claimed automatically.
+// Referral and sharing tasks require real verification and therefore cannot
+// be converted into wallet credit merely by calling an API endpoint.
+app.post("/api/tasks/:id/claim", authenticateToken, (req, res) => {
+  const taskId = Number(req.params.id);
 
-  res.json({
-    success: true,
-    rewards
-  });
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid task ID"
+    });
+  }
+
+  try {
+    const result = db.transaction(() => {
+      const task = db.prepare(`
+        SELECT id, title, reward
+        FROM tasks
+        WHERE id = ? AND user_id = ?
+      `).get(taskId, req.user.id);
+
+      if (!task) {
+        return { error: "Task not found", status: 404 };
+      }
+
+      if (task.title !== "Daily check-in") {
+        return {
+          error: "This task requires verification before its reward can be claimed.",
+          status: 400
+        };
+      }
+
+      const user = db.prepare(`
+        SELECT id, last_checkin
+        FROM users
+        WHERE id = ?
+      `).get(req.user.id);
+
+      if (!user) {
+        return { error: "User not found", status: 404 };
+      }
+
+      const checkedToday = db.prepare(`
+        SELECT 1
+        WHERE date(?) = date('now')
+      `).get(user.last_checkin);
+
+      if (checkedToday) {
+        return {
+          error: "Daily check-in already claimed today.",
+          status: 409
+        };
+      }
+
+      db.prepare(`
+        UPDATE users
+        SET last_checkin = datetime('now'),
+            balance = balance + ?,
+            wallet = wallet + ?
+        WHERE id = ?
+      `).run(task.reward, task.reward, req.user.id);
+
+      db.prepare(`
+        UPDATE tasks
+        SET done = 1
+        WHERE id = ? AND user_id = ?
+      `).run(task.id, req.user.id);
+
+      db.prepare(`
+        INSERT INTO transactions (user_id, type, amount, date)
+        VALUES (?, 'Daily Check-in Reward', ?, datetime('now'))
+      `).run(req.user.id, task.reward);
+
+      return { success: true, amount: task.reward };
+    })();
+
+    if (result.error) {
+      return res.status(result.status).json({
+        success: false,
+        message: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Daily check-in reward claimed",
+      amount: result.amount
+    });
+  } catch (error) {
+    console.error("Task claim failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to claim task reward"
+    });
+  }
+});
+
+// Rewards - only the authenticated member's rewards are returned.
+app.get("/api/rewards", authenticateToken, (req, res) => {
+  try {
+    ensureUserActivities(req.user.id);
+
+    const rewards = db.prepare(`
+      SELECT id, title, amount, claimed
+      FROM rewards
+      WHERE user_id = ?
+      ORDER BY id DESC
+    `).all(req.user.id);
+
+    res.json({
+      success: true,
+      rewards
+    });
+  } catch (error) {
+    console.error("Loading rewards failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to load rewards"
+    });
+  }
+});
+
+// Claim a reward atomically and only when it belongs to the authenticated user.
+app.post("/api/rewards/:id/claim", authenticateToken, (req, res) => {
+  const rewardId = Number(req.params.id);
+
+  if (!Number.isInteger(rewardId) || rewardId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid reward ID"
+    });
+  }
+
+  try {
+    const result = db.transaction(() => {
+      const reward = db.prepare(`
+        SELECT id, title, amount, claimed
+        FROM rewards
+        WHERE id = ? AND user_id = ?
+      `).get(rewardId, req.user.id);
+
+      if (!reward) {
+        return { error: "Reward not found", status: 404 };
+      }
+
+      if (Number(reward.claimed) === 1) {
+        return { error: "Reward has already been claimed.", status: 409 };
+      }
+
+      const update = db.prepare(`
+        UPDATE rewards
+        SET claimed = 1
+        WHERE id = ? AND user_id = ? AND claimed = 0
+      `).run(reward.id, req.user.id);
+
+      if (update.changes !== 1) {
+        return { error: "Reward has already been claimed.", status: 409 };
+      }
+
+      db.prepare(`
+        UPDATE users
+        SET balance = balance + ?, wallet = wallet + ?
+        WHERE id = ?
+      `).run(reward.amount, reward.amount, req.user.id);
+
+      if (Number(reward.amount) !== 0) {
+        db.prepare(`
+          INSERT INTO transactions (user_id, type, amount, date)
+          VALUES (?, ?, ?, datetime('now'))
+        `).run(req.user.id, `${reward.title} Reward`, reward.amount);
+      }
+
+      return { success: true, amount: reward.amount };
+    })();
+
+    if (result.error) {
+      return res.status(result.status).json({
+        success: false,
+        message: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Reward claimed successfully",
+      amount: result.amount
+    });
+  } catch (error) {
+    console.error("Reward claim failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to claim reward"
+    });
+  }
 });
 
 // Team
