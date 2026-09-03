@@ -125,8 +125,8 @@ async function ensurePgSchema() {
     );
   `);
 
-  const products = sqlite.prepare("SELECT * FROM products").all();
-  for (const product of products) {
+  const localProducts = sqlite.prepare("SELECT * FROM products").all();
+  for (const product of localProducts) {
     await pool.query(
       `INSERT INTO products
        (id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured, created_at)
@@ -158,12 +158,52 @@ async function ensurePgSchema() {
       ]
     );
   }
+
+  // PostgreSQL is the durable source for rentals on Render. Restore them into
+  // the local SQLite connection before serving member rental requests.
+  const pgRentals = (await pool.query(`
+    SELECT id, user_id, product_id, rental_fee, rental_days,
+           start_at, end_at, status, return_amount, completed_at, created_at
+    FROM rentals
+    ORDER BY id
+  `)).rows;
+
+  if (pgRentals.length) {
+    sqlite.exec("PRAGMA foreign_keys = OFF");
+    sqlite.prepare("DELETE FROM rentals").run();
+    const insertRental = sqlite.prepare(`
+      INSERT INTO rentals
+        (id, user_id, product_id, rental_fee, rental_days, start_at, end_at, status, return_amount, completed_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const restore = sqlite.transaction(rows => {
+      for (const rental of rows) {
+        insertRental.run(
+          rental.id,
+          rental.user_id,
+          rental.product_id,
+          rental.rental_fee,
+          rental.rental_days,
+          rental.start_at,
+          rental.end_at,
+          rental.status,
+          rental.return_amount,
+          rental.completed_at,
+          rental.created_at
+        );
+      }
+    });
+    restore(pgRentals);
+    sqlite.exec("PRAGMA foreign_keys = ON");
+  } else {
+    await syncRentalsToPostgres();
+  }
 }
 
 async function syncRentalsToPostgres() {
   if (!pool) return;
-  const rentals = sqlite.prepare("SELECT * FROM rentals ORDER BY id").all();
-  for (const rental of rentals) {
+  const localRentals = sqlite.prepare("SELECT * FROM rentals ORDER BY id").all();
+  for (const rental of localRentals) {
     await pool.query(
       `INSERT INTO rentals
        (id,user_id,product_id,rental_fee,rental_days,start_at,end_at,status,return_amount,completed_at,created_at)
@@ -237,7 +277,7 @@ router.get("/products", async (req, res) => {
 });
 
 router.get("/rentals", authenticate, (req, res) => {
-  const rentals = sqlite.prepare(`
+  const userRentals = sqlite.prepare(`
     SELECT r.id, r.product_id, p.code, p.name,
            r.rental_fee, r.rental_days, r.start_at, r.end_at,
            r.status, r.return_amount, r.completed_at, r.created_at
@@ -247,7 +287,7 @@ router.get("/rentals", authenticate, (req, res) => {
     ORDER BY r.id DESC
   `).all(req.rentalUser.id);
 
-  res.json({ success: true, rentals });
+  res.json({ success: true, rentals: userRentals });
 });
 
 router.post("/rentals", authenticate, async (req, res) => {
