@@ -20,7 +20,7 @@ test("sandbox is disabled until explicitly enabled and credentialed", () => {
   delete process.env.MTN_API_KEY;
   assert.equal(momo.config().baseUrl, momo.SANDBOX_BASE_URL);
   assert.equal(momo.config().targetEnvironment, "sandbox");
-  assert.equal(momo.config().currency, "EUR");
+  assert.equal(momo.config().currency, "UGX");
   assert.equal(momo.configured(), false);
 });
 
