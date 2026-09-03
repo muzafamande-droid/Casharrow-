@@ -91,7 +91,11 @@ test("PostgreSQL persistence preserves unrelated concurrent process updates", { 
       "tasks",
       "users"
     ]) {
-      const column = table === "referral_rewards" ? "referred_user_id" : "user_id";
+      const column = table === "users"
+        ? "id"
+        : table === "referral_rewards"
+          ? "referred_user_id"
+          : "user_id";
       await pool.query(`DELETE FROM ${table} WHERE ${column} IN ($1, $2)`, [userA, userB]);
     }
 
