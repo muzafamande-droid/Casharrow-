@@ -42,15 +42,19 @@
     const container = document.querySelector('main.container');
     if (!container) return false;
 
+    // Remove older/native/server-injected rental sections so there is exactly
+    // one authoritative catalog on the homepage.
     document.getElementById('casharrowRentalCatalog')?.remove();
     document.getElementById('casharrowGuestHome')?.remove();
     document.getElementById('casharrowDynamicMemberProducts')?.remove();
     document.getElementById('casharrowMemberProducts')?.remove();
+    document.getElementById('rentalCatalog')?.remove();
+    document.getElementById('casharrowStaticRentals')?.remove();
 
     const section = document.createElement('section');
     section.id = 'casharrowRentalCatalog';
     section.className = 'ca-rental-catalog';
-    section.innerHTML = `<div class="ca-rental-head"><div><h2>Rental Products</h2><p>Choose a CashArrow series and select a product.</p></div></div><div class="ca-series-tabs"></div><div class="ca-series-products"></div>`;
+    section.innerHTML = `<div class="ca-rental-head"><div><h2>🏹 Rental Products</h2><p>Choose a CashArrow series and select a product.</p></div></div><div class="ca-series-tabs"></div><div class="ca-series-products"></div>`;
 
     const style = document.createElement('style');
     style.id = 'casharrowRentalCatalogStyle';
