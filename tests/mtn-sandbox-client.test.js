@@ -42,3 +42,5 @@ test("deposit reference is deterministic and unique per deposit", () => {
   assert.notEqual(first, other);
   assert.match(first, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/);
 });
+
+// Keep the sandbox client tests network-free: real MTN calls belong in the sandbox integration stage.
