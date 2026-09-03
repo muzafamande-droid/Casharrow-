@@ -75,8 +75,8 @@ test("referrals save the link owner, grow their team, and reward exactly once", 
   assert.equal(referred.referred_by, referrer.id);
 
   assert.equal(
-    db.prepare("SELECT COUNT(*) AS count FROM team WHERE user_id = ? AND member_id = ?")
-      .get(referrer.id, referred.id).count,
+    db.prepare("SELECT COUNT(*) AS count FROM team WHERE user_id = ? AND member_name = ?")
+      .get(referrer.id, "Referred").count,
     1
   );
 
@@ -117,14 +117,14 @@ test("deposits stay pending until approved and are credited exactly once", async
     .get("0700000002");
   assert.ok(referrer);
 
-  const { response: loginResponse, data: login } = await login(
+  const { response: loginResponse, data: loginData } = await login(
     "0700000002",
     "password"
   );
   assert.equal(loginResponse.status, 200);
 
   const authHeaders = {
-    Authorization: `Bearer ${login.token}`,
+    Authorization: `Bearer ${loginData.token}`,
     "Content-Type": "application/json"
   };
 
