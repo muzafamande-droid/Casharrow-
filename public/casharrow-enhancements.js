@@ -139,9 +139,80 @@
     return originalFetch(input,init);
   };
 
+  function memberUser(){
+    try{return JSON.parse(localStorage.getItem("casharrowUser")||"null")||{};}catch{return {};}
+  }
+
+  function restoreReferralTasks(){
+    if(!token()) return;
+    const tasks=document.getElementById("todayTasks");
+    if(!tasks || document.getElementById("casharrowReferralTask")) return;
+    const user=memberUser();
+    const code=user.referralCode || user.referral_code || "";
+    const section=document.createElement("div");
+    section.id="casharrowReferralTask";
+    section.className="task";
+    section.style.display="block";
+    const link=code ? location.origin+"/?ref="+encodeURIComponent(code) : "";
+    section.innerHTML=`<div><b>🔗 Invite friends</b><div class="small" style="margin-top:6px">Referral code: <b>${code||"Loading..."}</b></div><div class="small" style="margin-top:4px">Earn UGX 5,000 when an eligible friend joins with your code.</div></div><button class="secondary" type="button" id="casharrowCopyReferral">Copy</button>`;
+    tasks.appendChild(section);
+    const copy=section.querySelector("#casharrowCopyReferral");
+    copy.onclick=async()=>{
+      if(!link){copy.textContent="No code";return;}
+      try{await navigator.clipboard.writeText(link);copy.textContent="Copied";}catch{prompt("Copy your referral link:",link);}
+      setTimeout(()=>copy.textContent="Copy",1600);
+    };
+  }
+
+  function openTasks(){
+    if(!token()){openModal("login");return;}
+    const tasks=document.getElementById("todayTasks");
+    const team=document.getElementById("teamSection");
+    if(tasks) tasks.style.display="block";
+    if(team) team.style.display="block";
+    restoreReferralTasks();
+    tasks?.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
+  function home(){
+    const wallet=document.getElementById("userWallet");
+    ["todayTasks","rewardsSection","teamSection","memberTools","casharrowDeposit","withdrawSection","transactions"].forEach(id=>{
+      const n=document.getElementById(id); if(n && id!=="userWallet") { n.style.display="none"; if(id==="withdrawSection"||id==="transactions") delete n.dataset.cashArrowOpen; }
+    });
+    if(wallet){wallet.style.display="block";wallet.scrollIntoView({behavior:"smooth",block:"start"});}
+    document.querySelectorAll(".bottom .nav").forEach((n,i)=>n.classList.toggle("active",i===0));
+    if(typeof window.cashArrowRefreshRentals==="function") window.cashArrowRefreshRentals();
+  }
+
+  function wallet(){
+    const w=document.getElementById("userWallet");
+    if(w){w.style.display="block";w.scrollIntoView({behavior:"smooth",block:"start"});}
+    document.querySelectorAll(".bottom .nav").forEach((n,i)=>n.classList.toggle("active",i===2));
+  }
+
+  function captureNavigation(){
+    document.addEventListener("click",event=>{
+      const button=event.target.closest(".bottom .nav, #userWallet button");
+      if(!button) return;
+      const navs=[...document.querySelectorAll(".bottom .nav")];
+      const index=navs.indexOf(button);
+      if(index===0){event.preventDefault();event.stopImmediatePropagation();home();return;}
+      if(index===1){event.preventDefault();event.stopImmediatePropagation();openTasks();return;}
+      if(index===2){event.preventDefault();event.stopImmediatePropagation();wallet();return;}
+      if(button.closest("#userWallet")){
+        const text=(button.textContent||"").toLowerCase();
+        if(text.includes("withdraw")){event.preventDefault();event.stopImmediatePropagation();if(typeof window.openWithdraw==="function")window.openWithdraw();return;}
+        if(text.includes("transaction")){event.preventDefault();event.stopImmediatePropagation();if(typeof window.loadTransactions==="function")window.loadTransactions();return;}
+        if(text.includes("deposit")){event.preventDefault();event.stopImmediatePropagation();openDeposit();return;}
+      }
+    },true);
+  }
+
   document.addEventListener("DOMContentLoaded",()=>{
     addConfirmPassword();
     if(token()) addDepositUI();
     addLogoutControl();
+    captureNavigation();
+    restoreReferralTasks();
   });
 })();
