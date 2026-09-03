@@ -10,21 +10,10 @@ function normalizeMsisdn(value) {
   if (digits.startsWith("7") && digits.length === 9) return `256${digits}`;
   return null;
 }
-
 function environment() { return String(process.env.MTN_ENVIRONMENT || "sandbox").trim().toLowerCase(); }
 function config() {
   const sandbox = environment() === "sandbox";
-  return {
-    env: sandbox ? "sandbox" : "production",
-    sandbox,
-    baseUrl: String(process.env.MTN_BASE_URL || (sandbox ? SANDBOX_BASE_URL : PRODUCTION_BASE_URL)).replace(/\/$/, ""),
-    targetEnvironment: sandbox ? "sandbox" : String(process.env.MTN_TARGET_ENVIRONMENT || "mtnuganda").trim(),
-    currency: sandbox ? String(process.env.MTN_CURRENCY || "EUR").trim().toUpperCase() : String(process.env.MTN_CURRENCY || "UGX").trim().toUpperCase(),
-    enabled: process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED === "true",
-    subscriptionKey: process.env.MTN_COLLECTION_SUBSCRIPTION_KEY,
-    apiUser: process.env.MTN_API_USER,
-    apiKey: process.env.MTN_API_KEY
-  };
+  return { env: sandbox ? "sandbox" : "production", sandbox, baseUrl: String(process.env.MTN_BASE_URL || (sandbox ? SANDBOX_BASE_URL : PRODUCTION_BASE_URL)).replace(/\/$/, ""), targetEnvironment: sandbox ? "sandbox" : String(process.env.MTN_TARGET_ENVIRONMENT || "mtnuganda").trim(), currency: sandbox ? String(process.env.MTN_CURRENCY || "EUR").trim().toUpperCase() : String(process.env.MTN_CURRENCY || "UGX").trim().toUpperCase(), enabled: process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED === "true", subscriptionKey: process.env.MTN_COLLECTION_SUBSCRIPTION_KEY, apiUser: process.env.MTN_API_USER, apiKey: process.env.MTN_API_KEY };
 }
 function configured() { const c = config(); return c.sandbox && c.enabled && Boolean(c.subscriptionKey && c.apiUser && c.apiKey); }
 function makeReference(depositId) { const digest = crypto.createHash("sha256").update(`casharrow-deposit:${depositId}`).digest("hex"); return `${digest.slice(0,8)}-${digest.slice(8,12)}-4${digest.slice(13,16)}-8${digest.slice(17,20)}-${digest.slice(20,32)}`; }
@@ -32,30 +21,11 @@ async function parseResponse(response) { const text = await response.text(); let
 let cachedToken = null, cachedTokenExpiresAt = 0, tokenPromise = null;
 async function getAccessToken() {
   if (!configured()) throw new Error("MTN sandbox automatic deposits are not configured");
-  const now = Date.now();
-  if (cachedToken && cachedTokenExpiresAt > now + 60000) return cachedToken;
-  if (tokenPromise) return tokenPromise;
-  tokenPromise = (async () => {
-    const c = config();
-    const credentials = Buffer.from(`${c.apiUser}:${c.apiKey}`).toString("base64");
-    const response = await fetch(`${c.baseUrl}/collection/token/`, { method:"POST", headers:{Authorization:`Basic ${credentials}`,"Ocp-Apim-Subscription-Key":c.subscriptionKey,"Content-Type":"application/x-www-form-urlencoded"}, body:"grant_type=client_credentials" });
-    const result = await parseResponse(response);
-    if (!result.ok || !result.body.access_token) throw new Error(`Unable to authenticate with MTN Mobile Money sandbox (${result.status})`);
-    cachedToken=result.body.access_token; cachedTokenExpiresAt=Date.now()+Number(result.body.expires_in||3600)*1000; return cachedToken;
-  })();
-  try { return await tokenPromise; } finally { tokenPromise = null; }
+  const now = Date.now(); if (cachedToken && cachedTokenExpiresAt > now + 60000) return cachedToken; if (tokenPromise) return tokenPromise;
+  tokenPromise = (async () => { const c=config(); const credentials=Buffer.from(`${c.apiUser}:${c.apiKey}`).toString("base64"); const response=await fetch(`${c.baseUrl}/collection/token/`,{method:"POST",headers:{Authorization:`Basic ${credentials}`,"Ocp-Apim-Subscription-Key":c.subscriptionKey,"Content-Type":"application/x-www-form-urlencoded"},body:"grant_type=client_credentials"}); const result=await parseResponse(response); if(!result.ok||!result.body.access_token) throw new Error(`Unable to authenticate with MTN Mobile Money sandbox (${result.status})`); cachedToken=result.body.access_token; cachedTokenExpiresAt=Date.now()+Number(result.body.expires_in||3600)*1000; return cachedToken; })();
+  try { return await tokenPromise; } finally { tokenPromise=null; }
 }
-async function requestPayment({amount, phone, reference, callbackUrl, externalId}) {
-  const c=config(); const token=await getAccessToken();
-  const headers={Authorization:`Bearer ${token}`,"Ocp-Apim-Subscription-Key":c.subscriptionKey,"X-Target-Environment":c.targetEnvironment,"X-Reference-Id":reference,"Content-Type":"application/json"};
-  if(callbackUrl) headers["X-Callback-Url"]=callbackUrl;
-  const response=await fetch(`${c.baseUrl}/collection/v1_0/requesttopay`,{method:"POST",headers,body:JSON.stringify({amount:String(amount),currency:c.currency,externalId:externalId||`CASHARROW-${reference}`,payer:{partyIdType:"MSISDN",partyId:phone},payerMessage:"CashArrow wallet deposit",payeeNote:"CashArrow wallet deposit"})});
-  const result=await parseResponse(response); if(response.status!==202) throw new Error(`MTN RequestToPay failed (${result.status})`); return {reference,status:"PENDING"};
-}
-async function getPaymentStatus(reference) {
-  const c=config(); const token=await getAccessToken();
-  const response=await fetch(`${c.baseUrl}/collection/v1_0/requesttopay/${encodeURIComponent(reference)}`,{headers:{Authorization:`Bearer ${token}`,"Ocp-Apim-Subscription-Key":c.subscriptionKey,"X-Target-Environment":c.targetEnvironment}});
-  const result=await parseResponse(response); if(!result.ok) throw new Error(`Unable to check MTN payment status (${result.status})`); return result.body;
-}
+async function requestPayment({amount,phone,reference,callbackUrl,externalId}) { const c=config(); const token=await getAccessToken(); const headers={Authorization:`Bearer ${token}`,"Ocp-Apim-Subscription-Key":c.subscriptionKey,"X-Target-Environment":c.targetEnvironment,"X-Reference-Id":reference,"Content-Type":"application/json"}; if(callbackUrl) headers["X-Callback-Url"]=callbackUrl; const response=await fetch(`${c.baseUrl}/collection/v1_0/requesttopay`,{method:"POST",headers,body:JSON.stringify({amount:String(amount),currency:c.currency,externalId:externalId||`CASHARROW-${reference}`,payer:{partyIdType:"MSISDN",partyId:phone},payerMessage:"CashArrow wallet deposit",payeeNote:"CashArrow wallet deposit"})}); const result=await parseResponse(response); if(response.status!==202) throw new Error(`MTN RequestToPay failed (${result.status})`); return {reference,status:"PENDING"}; }
+async function getPaymentStatus(reference) { const c=config(); const token=await getAccessToken(); const response=await fetch(`${c.baseUrl}/collection/v1_0/requesttopay/${encodeURIComponent(reference)}`,{headers:{Authorization:`Bearer ${token}`,"Ocp-Apim-Subscription-Key":c.subscriptionKey,"X-Target-Environment":c.targetEnvironment}}); const result=await parseResponse(response); if(!result.ok) throw new Error(`Unable to check MTN payment status (${result.status})`); return result.body; }
 function expectedCurrency(){return config().currency;}
 module.exports={SANDBOX_BASE_URL,PRODUCTION_BASE_URL,normalizeMsisdn,environment,config,configured,makeReference,requestPayment,getPaymentStatus,expectedCurrency};
