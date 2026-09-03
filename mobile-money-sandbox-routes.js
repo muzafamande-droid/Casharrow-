@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const db = require("./database");
+const db = require("./database-pg");
+const financial = require("./financial-pg-v2");
 const momo = require("./mobile-money-sandbox");
 
 const router = express.Router();
@@ -8,23 +9,30 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const FINAL_FAILURES = new Set(["FAILED", "REJECTED", "CANCELLED", "TIMEOUT"]);
 const pollingDeposits = new Set();
 
+if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is not configured");
+
 function authenticate(req, res, next) {
   const header = req.headers.authorization || "";
   if (!header.startsWith("Bearer ")) return res.status(401).json({ success: false, message: "Authentication required" });
-  try { req.user = jwt.verify(header.slice(7), JWT_SECRET); next(); }
-  catch (_) { return res.status(401).json({ success: false, message: "Invalid or expired session" }); }
+  try {
+    req.user = jwt.verify(header.slice(7), JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ success: false, message: "Invalid or expired session" });
+  }
 }
 
-function getDeposit(id) {
+async function getDeposit(id) {
   const n = Number(id);
   if (!Number.isInteger(n) || n <= 0) return null;
-  return db.prepare("SELECT id,user_id,amount,network,account,status FROM deposits WHERE id=?").get(n);
+  const result = await db.query("SELECT id,user_id,amount,network,account,status,provider_reference FROM deposits WHERE id=$1", [n]);
+  return result.rows[0] || null;
 }
 
-function verifyProviderPayment(deposit, provider, reference) {
+async function verifyProviderPayment(deposit, provider, reference) {
   if (!deposit) return { error: "Deposit not found", status: 404 };
-  if (deposit.status === "approved") return { success: true, alreadyProcessed: true, depositId: deposit.id, status: "approved" };
-  if (deposit.status !== "pending") return { success: true, depositId: deposit.id, status: deposit.status };
+  if (deposit.status === "approved") return { success: true, alreadyProcessed: true, depositId: Number(deposit.id), status: "approved" };
+  if (deposit.status !== "pending") return { success: true, depositId: Number(deposit.id), status: deposit.status };
 
   if (String(provider.externalId || "") !== `CASHARROW-${reference}`) return { error: "Provider reference does not match this deposit", status: 409 };
   if (Number(provider.amount) !== Number(deposit.amount)) return { error: "Provider amount does not match this deposit", status: 409 };
@@ -36,37 +44,31 @@ function verifyProviderPayment(deposit, provider, reference) {
   const expectedPayer = momo.normalizeMsisdn(deposit.account);
   if (!payer || !expectedPayer || payer !== expectedPayer) return { error: "Provider payer does not match this deposit", status: 409 };
 
-  return db.transaction(() => {
-    const current = db.prepare("SELECT status FROM deposits WHERE id=?").get(deposit.id);
-    if (!current || current.status !== "pending") return { success: true, alreadyProcessed: true, depositId: deposit.id, status: current?.status || "unknown" };
-
-    const update = db.prepare("UPDATE deposits SET status='approved', approved_at=datetime('now') WHERE id=? AND status='pending'").run(deposit.id);
-    if (update.changes !== 1) return { success: true, alreadyProcessed: true, depositId: deposit.id };
-
-    const walletUpdate = db.prepare("UPDATE users SET balance=balance+?, wallet=wallet+? WHERE id=?").run(deposit.amount, deposit.amount, deposit.user_id);
-    if (walletUpdate.changes !== 1) throw new Error("Unable to credit the CashArrow wallet");
-
-    db.prepare("INSERT INTO transactions (user_id,type,amount,date) VALUES (?, 'Deposit', ?, datetime('now'))").run(deposit.user_id, deposit.amount);
-    return { success: true, depositId: deposit.id, amount: deposit.amount, status: "approved" };
-  })();
+  try {
+    const approved = await financial.approveDeposit(Number(deposit.id), { providerReference: reference });
+    return { success: true, depositId: Number(deposit.id), amount: Number(deposit.amount), status: "approved", deposit: approved };
+  } catch (error) {
+    if (error.message === "Deposit already approved") return { success: true, alreadyProcessed: true, depositId: Number(deposit.id), status: "approved" };
+    throw error;
+  }
 }
 
 async function reconcileDeposit(depositId) {
-  const deposit = getDeposit(depositId);
+  const deposit = await getDeposit(depositId);
   if (!deposit) return { success: false, depositId, status: "not_found" };
-  if (deposit.status !== "pending") return { success: true, depositId, status: deposit.status };
-  if (!momo.configured()) return { success: true, depositId, status: "pending", configured: false };
+  if (deposit.status !== "pending") return { success: true, depositId: Number(deposit.id), status: deposit.status };
+  if (!momo.configured()) return { success: true, depositId: Number(deposit.id), status: "pending", configured: false };
 
-  const reference = momo.makeReference(deposit.id);
+  const reference = momo.makeReference(Number(deposit.id));
   const provider = await momo.getPaymentStatus(reference);
   const status = String(provider.status || "PENDING").toUpperCase();
 
   if (status === "SUCCESSFUL") return verifyProviderPayment(deposit, provider, reference);
   if (FINAL_FAILURES.has(status)) {
-    db.prepare("UPDATE deposits SET status='failed' WHERE id=? AND status='pending'").run(deposit.id);
-    return { success: true, depositId: deposit.id, status: "failed" };
+    await db.query("UPDATE deposits SET status='failed' WHERE id=$1 AND status='pending'", [deposit.id]);
+    return { success: true, depositId: Number(deposit.id), status: "failed" };
   }
-  return { success: true, depositId: deposit.id, status: "pending" };
+  return { success: true, depositId: Number(deposit.id), status: "pending" };
 }
 
 async function pollDeposit(depositId) {
@@ -88,13 +90,11 @@ async function pollDeposit(depositId) {
 
 async function resumePendingDeposits() {
   if (!momo.configured()) return;
-  const pending = db.prepare("SELECT id FROM deposits WHERE network='MTN' AND status='pending' ORDER BY id ASC LIMIT 25").all();
-  for (const row of pending) pollDeposit(row.id);
+  const pending = await db.query("SELECT id FROM deposits WHERE network='MTN' AND status='pending' ORDER BY id ASC LIMIT 25");
+  for (const row of pending.rows) pollDeposit(Number(row.id));
 }
 
-// Provider callbacks are intentionally only a fast path. Polling remains the
-// source of truth because MTN documents that callbacks are sent only once.
-setTimeout(resumePendingDeposits, 3000).unref();
+setTimeout(() => resumePendingDeposits().catch(error => console.error("Unable to resume MTN deposits:", error.message)), 3000).unref();
 
 router.post("/mobile-money/deposit", authenticate, async (req, res) => {
   const amount = Number(req.body.amount);
@@ -106,19 +106,24 @@ router.post("/mobile-money/deposit", authenticate, async (req, res) => {
   if (!account) return res.status(400).json({ success: false, message: "Enter a valid Ugandan Mobile Money number" });
   if (!momo.configured()) return res.status(503).json({ success: false, code: "PAYMENT_PROVIDER_NOT_CONFIGURED", message: "MTN sandbox deposits are not enabled yet. No money has been charged." });
 
-  const user = db.prepare("SELECT id,phone FROM users WHERE id=?").get(req.user.id);
+  const userResult = await db.query("SELECT id,phone FROM users WHERE id=$1", [req.user.id]);
+  const user = userResult.rows[0];
   if (!user) return res.status(404).json({ success: false, message: "User not found" });
   if (momo.normalizeMsisdn(user.phone) !== account) return res.status(400).json({ success: false, message: "Use the Mobile Money number registered on your CashArrow account" });
 
-  const row = db.prepare("INSERT INTO deposits (user_id,amount,network,account,status,date) VALUES (?,?,'MTN',?,'pending',datetime('now'))").run(user.id, amount, account);
-  const depositId = Number(row.lastInsertRowid);
+  const inserted = await db.query(`
+    INSERT INTO deposits (id,user_id,amount,network,account,status,date)
+    VALUES (nextval('casharrow_deposits_id_seq'),$1,$2,'MTN',$3,'pending',NOW())
+    RETURNING id
+  `, [user.id, amount, account]);
+  const depositId = Number(inserted.rows[0].id);
   const reference = momo.makeReference(depositId);
-  const callbackUrl = String(process.env.MTN_CALLBACK_URL || "").trim();
 
   try {
-    await momo.requestPayment({ amount, phone: account, reference, callbackUrl: callbackUrl || undefined });
+    await momo.requestPayment({ amount, phone: account, reference, callbackUrl: process.env.MTN_CALLBACK_URL || undefined });
+    await db.query("UPDATE deposits SET provider_reference=$1 WHERE id=$2", [reference, depositId]);
   } catch (error) {
-    db.prepare("UPDATE deposits SET status='failed' WHERE id=? AND status='pending'").run(depositId);
+    await db.query("UPDATE deposits SET status='failed' WHERE id=$1 AND status='pending'", [depositId]);
     console.error("MTN sandbox RequestToPay failed:", error.message);
     return res.status(502).json({ success: false, code: "PAYMENT_PROVIDER_ERROR", message: "Unable to start the MTN Mobile Money payment. No wallet credit was made." });
   }
@@ -130,12 +135,12 @@ router.post("/mobile-money/deposit", authenticate, async (req, res) => {
 router.all("/mobile-money/mtn/callback", async (req, res) => {
   const depositId = Number(req.query.depositId);
   const suppliedReference = String(req.query.reference || req.headers["x-reference-id"] || req.body?.referenceId || "");
-  const deposit = getDeposit(depositId);
+  const deposit = await getDeposit(depositId);
   if (!deposit || !suppliedReference) return res.status(400).json({ success: false, message: "Missing or invalid payment reference" });
-  if (suppliedReference !== momo.makeReference(deposit.id)) return res.status(409).json({ success: false, message: "Payment reference does not match this deposit" });
+  if (suppliedReference !== momo.makeReference(Number(deposit.id))) return res.status(409).json({ success: false, message: "Payment reference does not match this deposit" });
 
   try {
-    const result = await reconcileDeposit(deposit.id);
+    const result = await reconcileDeposit(Number(deposit.id));
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
     return res.status(200).json({ success: true, status: result.status });
   } catch (error) {
@@ -145,16 +150,16 @@ router.all("/mobile-money/mtn/callback", async (req, res) => {
 });
 
 router.get("/mobile-money/deposit/:id/status", authenticate, async (req, res) => {
-  const deposit = getDeposit(req.params.id);
-  if (!deposit || deposit.user_id !== req.user.id) return res.status(404).json({ success: false, message: "Deposit not found" });
-  if (deposit.status !== "pending") return res.json({ success: true, depositId: deposit.id, status: deposit.status });
+  const deposit = await getDeposit(req.params.id);
+  if (!deposit || Number(deposit.user_id) !== Number(req.user.id)) return res.status(404).json({ success: false, message: "Deposit not found" });
+  if (deposit.status !== "pending") return res.json({ success: true, depositId: Number(deposit.id), status: deposit.status });
 
   try {
-    const result = await reconcileDeposit(deposit.id);
+    const result = await reconcileDeposit(Number(deposit.id));
     return res.json(result);
   } catch (error) {
     console.error("MTN status polling failed:", error.message);
-    return res.json({ success: true, depositId: deposit.id, status: "pending" });
+    return res.json({ success: true, depositId: Number(deposit.id), status: "pending" });
   }
 });
 
