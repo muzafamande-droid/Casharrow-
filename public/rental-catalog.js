@@ -104,7 +104,12 @@
             button.disabled = true;
             fetch('/api/rentals', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${localStorage.getItem('casharrowToken')}`}, body:JSON.stringify({productId:p.id}) })
               .then(async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.message || 'Rental failed'); return d; })
-              .then(d => { alert(d.message || 'Rental started successfully.'); if (typeof window.loadWallet === 'function') window.loadWallet(); if (typeof window.cashArrowRefreshRentals === 'function') window.cashArrowRefreshRentals(); })
+              .then(d => {
+                alert(d.message || 'Rental started successfully.');
+                if (typeof window.loadWallet === 'function') window.loadWallet();
+                if (typeof window.loadTransactions === 'function') window.loadTransactions();
+                if (typeof window.cashArrowRefreshRentals === 'function') window.cashArrowRefreshRentals();
+              })
               .catch(e => alert(e.message || 'Unable to start rental.'))
               .finally(() => { button.disabled = false; });
           };
