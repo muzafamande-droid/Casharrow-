@@ -13,7 +13,7 @@ app.response.send = function (body) {
   if (this.req && this.req.path === "/" && typeof body === "string" && body.includes("</body>")) {
     body = body.replace(
       "</body>",
-      '  <style>#casharrowMemberProducts.casharrow-member-products{display:none!important}#casharrowGuestHome .casharrow-products{display:none!important}</style>\n  <script>\n    document.addEventListener("DOMContentLoaded", () => {\n      document.getElementById("casharrowMemberProducts")?.remove();\n      document.querySelector("#casharrowGuestHome .casharrow-products")?.replaceChildren();\n    });\n  </script>\n  <script src="/rental-ui.js"></script>\n</body>'
+      '  <style>#casharrowMemberProducts.casharrow-member-products{display:none!important}#casharrowGuestHome .casharrow-products{display:none!important}</style>\n  <script>\n    // The legacy rental UI is created by casharrow-enhancements.js during\n    // page startup. Remove it whenever it appears, while leaving the new\n    // API-driven rental UI from rental-ui.js untouched.\n    (() => {\n      const removeLegacyRentalUI = () => {\n        document.getElementById("casharrowMemberProducts")?.remove();\n        document.querySelector("#casharrowGuestHome .casharrow-products")?.remove();\n      };\n      document.addEventListener("DOMContentLoaded", removeLegacyRentalUI);\n      new MutationObserver(removeLegacyRentalUI).observe(document.documentElement, { childList: true, subtree: true });\n    })();\n  </script>\n  <script src="/rental-ui.js"></script>\n</body>'
     );
   }
   return originalSend.call(this, body);
