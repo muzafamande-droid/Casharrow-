@@ -1,5 +1,6 @@
 const app = require("./server");
 const db = require("./database");
+const pgDb = require("./database-pg");
 const rental = require("./rental-routes");
 const withdrawal = require("./withdrawal-routes");
 const mobileMoney = require("./mobile-money-sandbox-routes");
@@ -24,8 +25,7 @@ if (app._router && Array.isArray(app._router.stack)) {
 
   app._router.stack = app._router.stack.filter(layer => {
     if (!layer.route) return true;
-    const path = layer.route.path;
-    return !retiredRoutes.has(path);
+    return !retiredRoutes.has(layer.route.path);
   });
 }
 
@@ -47,6 +47,7 @@ app.response.send = function (body) {
 
 async function start(){
   await db.ready;
+  await pgDb.init();
   await rental.ready();
   app.listen(PORT,()=>console.log(`CashArrow is running on port ${PORT}`));
 }
