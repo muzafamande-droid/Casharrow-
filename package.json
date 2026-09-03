@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server-with-rentals-v2.js",
+    "start": "node server-with-rentals-v3.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js"
   },
   "dependencies": {
