@@ -13,7 +13,7 @@ app.response.send = function (body) {
   if (this.req && this.req.path === "/" && typeof body === "string" && body.includes("</body>")) {
     body = body.replace(
       "</body>",
-      '  <script src="/rental-ui.js"></script>\n</body>'
+      '  <script>document.getElementById("casharrowMemberProducts")?.remove();</script>\n  <script src="/rental-ui.js"></script>\n</body>'
     );
   }
   return originalSend.call(this, body);
