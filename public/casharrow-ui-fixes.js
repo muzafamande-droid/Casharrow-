@@ -6,42 +6,65 @@
   css.textContent = `
     body { font-size:16px!important; }
     button, .btn, a.btn, input, select { font-size:16px!important; min-height:46px; }
-    .ca-rental-catalog{background:#0b2147!important;color:#fff!important;border:1px solid #78aaff2e!important;border-radius:16px!important;padding:14px!important;margin-top:14px!important}
-    .ca-rental-catalog .ca-rental-head h2{font-size:22px!important;color:#fff!important}
-    .ca-rental-catalog .ca-rental-head p{font-size:14px!important;color:#b7c9e5!important}
-    .ca-rental-catalog .ca-series-tabs{display:flex!important;overflow-x:auto!important;gap:8px!important;scrollbar-width:none!important}
+    .ca-rental-catalog{background:#0b2147!important;color:#fff!important;border:1px solid #78aaff2e!important;border-radius:20px!important;padding:16px!important;margin-top:14px!important}
+    .ca-rental-catalog .ca-rental-head h2{font-size:25px!important;color:#fff!important;font-weight:900!important}
+    .ca-rental-catalog .ca-rental-head p{font-size:15px!important;color:#c7d6ed!important}
+    .ca-rental-catalog .ca-series-tabs{display:flex!important;overflow-x:auto!important;gap:9px!important;scrollbar-width:none!important}
     .ca-rental-catalog .ca-series-tabs::-webkit-scrollbar{display:none}
-    .ca-rental-catalog .ca-series-tab{flex:0 0 auto!important;min-width:82px!important;background:#102b58!important;color:#dce9ff!important;border:1px solid #8ab4ff22!important;border-radius:10px!important;padding:10px 12px!important;font-size:14px!important;box-shadow:none!important}
+    .ca-rental-catalog .ca-series-tab{flex:0 0 auto!important;min-width:92px!important;background:#102b58!important;color:#dce9ff!important;border:1px solid #8ab4ff22!important;border-radius:12px!important;padding:11px 13px!important;font-size:15px!important;box-shadow:none!important}
     .ca-rental-catalog .ca-series-tab.active{background:#0757e8!important;color:#fff!important}
     .ca-rental-catalog .ca-series-tab small{font-size:12px!important;color:#b7c9e5!important}
-    .ca-rental-catalog .ca-series-panel{background:#071a38!important;color:#fff!important;border-radius:12px!important;padding:12px!important;box-shadow:none!important}
-    .ca-rental-catalog .ca-product{grid-template-columns:64px 1fr auto!important;gap:10px!important;padding:12px 0!important;align-items:center!important}
-    .ca-rental-catalog .ca-product img{width:60px!important;height:60px!important;border-radius:12px!important;object-fit:cover!important;background:#102b58!important}
-    .ca-rental-catalog .ca-product h3{font-size:17px!important;color:#fff!important;margin:0!important}
-    .ca-rental-catalog .ca-product p{font-size:14px!important;line-height:1.45!important;color:#c6d5eb!important;margin-top:5px!important}
-    .ca-rental-catalog .ca-product button{padding:10px 14px!important;border-radius:9px!important;font-size:16px!important;font-weight:800!important;min-height:46px!important}
-    .ca-rental-catalog .ca-note{font-size:13px!important;color:#b7c9e5!important}
-    .modalbox{max-height:90vh!important;overflow:auto!important}
-    body.ca-auth-open .bottom{opacity:0!important;pointer-events:none!important}
-    .ca-auth-footer{margin-top:18px;padding-top:14px;border-top:1px solid #edf1f6;text-align:center}
-    .ca-auth-footer strong{display:block;font-size:14px;margin-bottom:4px}
-    .ca-auth-footer span{font-size:13px;color:#718096}
-    .ca-referral-wrap{margin:10px 0 2px}
-    .ca-referral-label{display:block;font-size:14px;color:#718096;margin:2px 0 5px}
-    .ca-referral-note{font-size:12px;color:#718096;margin:3px 0 0}
-    .ca-notice{position:fixed;left:16px;right:16px;top:76px;z-index:80;max-width:520px;margin:auto;background:#fff;border:1px solid #dce7f8;border-radius:18px;box-shadow:0 12px 35px #0002;padding:18px 48px 18px 18px}
+    .ca-rental-catalog .ca-series-panel{background:#071a38!important;color:#fff!important;border-radius:14px!important;padding:13px!important;box-shadow:none!important}
+    .ca-rental-catalog .ca-product{grid-template-columns:88px 1fr auto!important;gap:14px!important;padding:16px 2px!important;align-items:center!important}
+    .ca-rental-catalog .ca-product img{width:88px!important;height:88px!important;border-radius:18px!important;object-fit:cover!important;background:#102b58!important}
+    .ca-rental-catalog .ca-product h3{font-size:21px!important;color:#fff!important;margin:0!important;font-weight:900!important}
+    .ca-rental-catalog .ca-product p{font-size:15px!important;line-height:1.5!important;color:#c6d5eb!important;margin-top:6px!important}
+    .ca-rental-catalog .ca-product button{padding:11px 18px!important;border-radius:11px!important;font-size:18px!important;font-weight:900!important;min-height:52px!important;background:#0757e8!important;color:#fff!important}
+    .ca-rental-catalog .ca-note{font-size:14px!important;color:#b7c9e5!important}
+    .ca-machine-buy{font-size:18px!important;font-weight:900!important;min-height:52px!important;padding:12px 18px!important}
+
+    /* Authentication */
+    .modal{backdrop-filter:blur(6px)!important;background:#06142fd9!important;padding:16px!important}
+    .modalbox{max-height:92vh!important;overflow:auto!important;border-radius:24px!important;padding:28px 22px 22px!important;box-shadow:0 24px 70px #0008!important;border:1px solid #e5eaf2!important}
+    .modalbox h2{font-size:27px!important;color:#12213b!important;margin-bottom:7px!important;font-weight:900!important}
+    .modalbox .small{font-size:14px!important;line-height:1.45!important}
+    .modalbox input{height:52px!important;min-height:52px!important;margin:7px 0!important;padding:0 15px!important;border:1px solid #cfd8e6!important;border-radius:13px!important;background:#f9fbfe!important;color:#172033!important}
+    .modalbox input:focus{outline:3px solid #0757e81f!important;border-color:#0757e8!important;background:#fff!important}
+    .modalbox .primary{height:54px!important;min-height:54px!important;border-radius:13px!important;font-size:17px!important;font-weight:900!important;box-shadow:0 8px 18px #0757e82e!important}
+    .modalbox .close{width:40px!important;height:40px!important;border-radius:50%!important;font-size:24px!important;background:#eef2f7!important;color:#344054!important}
+    .ca-auth-switch{text-align:center!important;margin-top:16px!important;font-size:14px!important;color:#667085!important}
+    .ca-auth-switch b{color:#0757e8!important;cursor:pointer!important}
+    .ca-auth-heading{display:inline-flex;align-items:center;gap:7px;margin-bottom:2px}
+    .ca-auth-subtitle{margin-bottom:12px!important;color:#667085!important}
+    .ca-auth-phone-note{font-size:12px!important;color:#7b8494!important;margin:-2px 0 7px!important}
+    .ca-password-wrap{position:relative!important}
+    .ca-password-wrap input{padding-right:82px!important}
+    .ca-password-toggle{position:absolute!important;right:7px!important;top:7px!important;height:38px!important;min-height:38px!important;padding:5px 10px!important;border-radius:9px!important;background:#eef4ff!important;color:#0757e8!important;font-size:12px!important;font-weight:800!important}
+    .ca-auth-footer{margin-top:20px!important;padding-top:15px!important;border-top:1px solid #edf1f6!important;text-align:center!important}
+    .ca-auth-footer strong{display:block!important;font-size:14px!important;margin-bottom:4px!important;color:#172033!important}
+    .ca-auth-footer span{font-size:12px!important;color:#718096!important}
+    .ca-referral-wrap{margin:9px 0 3px!important}
+    .ca-referral-label{display:block!important;font-size:14px!important;color:#475467!important;margin:3px 0 5px!important;font-weight:700!important}
+    .ca-referral-note{font-size:12px!important;color:#718096!important;line-height:1.4!important;margin:4px 0 0!important}
+    .msg{font-size:14px!important;line-height:1.4!important}
+
+    .ca-notice{position:fixed;left:14px;right:14px;top:76px;z-index:80;max-width:520px;margin:auto;background:#fff;border:1px solid #dce7f8;border-radius:18px;box-shadow:0 12px 35px #0002;padding:18px 48px 18px 18px}
     .ca-notice h3{font-size:19px;margin-bottom:6px}
     .ca-notice p{font-size:14px;line-height:1.5;color:#5f6b7a}
     .ca-notice button{position:absolute;right:9px;top:9px;width:36px;height:36px;padding:0;background:#eef2f7;font-size:22px;line-height:1}
     .ca-notice .ca-notice-action{position:static;width:auto;height:auto;margin-top:12px;padding:10px 14px;background:#0757e8;color:#fff;font-size:16px;font-weight:800}
-    .ca-machine-buy{font-size:18px!important;font-weight:800!important;min-height:52px!important;padding:12px 18px!important}
-    .ca-hidden-financial-duplicate{display:none!important}
+
+    body.ca-auth-open .bottom{opacity:0!important;pointer-events:none!important}
+    @media(max-width:560px){
+      .ca-rental-catalog .ca-product{grid-template-columns:76px 1fr!important}
+      .ca-rental-catalog .ca-product img{width:76px!important;height:76px!important}
+      .ca-rental-catalog .ca-product button{grid-column:1 / -1!important;width:100%!important;margin-top:2px!important}
+    }
     @media(max-width:480px){
-      .ca-rental-catalog .ca-product{grid-template-columns:58px 1fr auto!important}
-      .ca-rental-catalog .ca-product img{width:54px!important;height:54px!important}
-      .ca-rental-catalog .ca-product h3{font-size:16px!important}
-      .ca-rental-catalog .ca-product p{font-size:13px!important}
-      .ca-rental-catalog .ca-product button{padding:9px 12px!important;font-size:16px!important}
+      .ca-rental-catalog .ca-product h3{font-size:20px!important}
+      .ca-rental-catalog .ca-product p{font-size:14px!important}
+      .modalbox{padding:26px 18px 20px!important}
+      .modalbox h2{font-size:25px!important}
       .ca-notice{top:68px}
     }
   `;
@@ -61,17 +84,47 @@
     });
   }
 
+  function polishAuthForm(form, type) {
+    if (!form || form.dataset.caAuthPolished) return;
+    form.dataset.caAuthPolished = '1';
+    const heading = form.querySelector('h2');
+    if (heading) heading.classList.add('ca-auth-heading');
+    const subtitle = heading?.nextElementSibling;
+    if (subtitle) subtitle.classList.add('ca-auth-subtitle');
+
+    const phone = type === 'login' ? document.getElementById('loginPhone') : document.getElementById('registerPhone');
+    if (phone) {
+      phone.setAttribute('inputmode','tel');
+      phone.setAttribute('autocomplete', type === 'login' ? 'tel' : 'tel');
+      phone.placeholder = 'Phone number (e.g. 07XXXXXXXX)';
+      if (!phone.nextElementSibling?.classList.contains('ca-auth-phone-note')) {
+        const note=document.createElement('div');note.className='ca-auth-phone-note';note.textContent='Uganda mobile number';phone.insertAdjacentElement('afterend',note);
+      }
+    }
+
+    const password = type === 'login' ? document.getElementById('loginPassword') : document.getElementById('registerPassword');
+    if (password && !password.parentElement.classList.contains('ca-password-wrap')) {
+      const wrap=document.createElement('div');wrap.className='ca-password-wrap';password.parentNode.insertBefore(wrap,password);wrap.appendChild(password);
+      const toggle=document.createElement('button');toggle.type='button';toggle.className='ca-password-toggle';toggle.textContent='Show';
+      toggle.onclick=()=>{const shown=password.type==='text';password.type=shown?'password':'text';toggle.textContent=shown?'Show':'Hide';};wrap.appendChild(toggle);
+    }
+  }
+
   function installAuthPolish() {
     const modal = document.getElementById('modal');
     if (!modal || modal.dataset.caPolished) return;
     modal.dataset.caPolished = '1';
     const sync = () => document.body.classList.toggle('ca-auth-open', modal.style.display === 'flex');
     new MutationObserver(sync).observe(modal, { attributes:true, attributeFilter:['style'] });
+    const login = document.getElementById('loginForm');
+    const register = document.getElementById('registerForm');
+    polishAuthForm(login,'login');
+    polishAuthForm(register,'register');
     const box = modal.querySelector('.modalbox');
     if (box && !box.querySelector('.ca-auth-footer')) {
       const footer = document.createElement('div');
       footer.className = 'ca-auth-footer';
-      footer.innerHTML = '<strong>Welcome to CashArrow</strong><span>🔒 Your account information is protected.</span>';
+      footer.innerHTML = '<strong>🏹 CashArrow</strong><span>Secure account access · UGX wallet</span>';
       box.appendChild(footer);
     }
   }
@@ -84,8 +137,8 @@
     if (!password) return;
     const wrap = document.createElement('div');
     wrap.className = 'ca-referral-wrap';
-    wrap.innerHTML = '<label class="ca-referral-label" for="casharrowReferralCode">Referral code <span>(optional)</span></label><input id="casharrowReferralCode" placeholder="Enter referral code"><div class="ca-referral-note">Use your friend\'s link/code so they can earn 10% from your first machine rental.</div>';
-    password.insertAdjacentElement('afterend', wrap);
+    wrap.innerHTML = '<label class="ca-referral-label" for="casharrowReferralCode">Referral code <span>(optional)</span></label><input id="casharrowReferralCode" placeholder="Enter referral code"><div class="ca-referral-note">Use a friend\'s link or code when signing up.</div>';
+    password.closest('.ca-password-wrap')?.insertAdjacentElement('afterend', wrap) || password.insertAdjacentElement('afterend', wrap);
     let code = '';
     try {
       const urlCode = new URLSearchParams(location.search).get('ref');
@@ -124,20 +177,16 @@
     if (document.querySelector('.ca-notice')) return;
     const notice = document.createElement('div');
     notice.className = 'ca-notice';
-    notice.innerHTML = '<button type="button" aria-label="Close">×</button><h3>🏹 Welcome to CashArrow</h3><p>Explore our machines, create your account, and start your CashArrow journey. Have a referral link? Open it before signing up so your referral is connected.</p><button type="button" class="ca-notice-action">Buy a Machine</button>';
+    notice.innerHTML = '<button type="button" aria-label="Close">×</button><h3>🏹 Welcome to CashArrow</h3><p>Explore our machines, create your account, and start your CashArrow journey.</p><button type="button" class="ca-notice-action">Create Account</button>';
     document.body.appendChild(notice);
     const close = () => { localStorage.setItem('casharrowWelcomeNoticeDismissed','1'); notice.remove(); };
     notice.querySelector('button').onclick = close;
     notice.querySelector('.ca-notice-action').onclick = () => { close(); if (typeof openModal === 'function') openModal('register'); };
   }
 
-  function replaceLoginLabels() {
+  function replaceMachineLabels() {
     document.querySelectorAll('button, a, [role="button"]').forEach(el => {
       const label = (el.textContent || '').trim().toLowerCase();
-      if (label === 'login' || label === 'log in') {
-        el.textContent = 'Buy';
-        el.setAttribute('aria-label', 'Buy a machine');
-      }
       if (/^rent( machine)?$/.test(label)) {
         el.textContent = 'Buy';
         el.classList.add('ca-machine-buy');
@@ -150,7 +199,7 @@
       const b = event.target.closest('#casharrowCompactHome [data-k]');
       if (b) preserveMovedSections();
     }, true);
-    const observer = new MutationObserver(() => replaceLoginLabels());
+    const observer = new MutationObserver(() => replaceMachineLabels());
     observer.observe(document.body, { childList:true, subtree:true });
   }
 
@@ -159,7 +208,7 @@
     installReferralSignup();
     installReferralFetchBridge();
     installVisitorNotice();
-    replaceLoginLabels();
+    replaceMachineLabels();
     watchDashboard();
   }
 
