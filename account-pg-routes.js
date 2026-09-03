@@ -5,7 +5,6 @@ const db = require("./database-pg");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
-const REFERRAL_REWARD = 5000;
 
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is not configured");
 
@@ -68,19 +67,6 @@ router.post("/register", async (req, res) => {
           (nextval('casharrow_rewards_id_seq'), $1, 'VIP Bonus', 500, 0)
       `, [user.id]);
 
-      if (referrer) {
-        const reward = await client.query(`
-          INSERT INTO referral_rewards (id, referrer_id, referred_user_id, amount)
-          VALUES (nextval('casharrow_referral_rewards_id_seq'), $1, $2, $3)
-          ON CONFLICT (referred_user_id) DO NOTHING
-          RETURNING id
-        `, [referrer.id, user.id, REFERRAL_REWARD]);
-        if (reward.rowCount) {
-          await client.query(`INSERT INTO team (id, user_id, member_name, earn) VALUES (nextval('casharrow_team_id_seq'), $1, $2, $3)`, [referrer.id, normalizedName, REFERRAL_REWARD]);
-          await client.query(`UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2`, [REFERRAL_REWARD, referrer.id]);
-          await client.query(`INSERT INTO transactions (id, user_id, type, amount, reference, date) VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Referral Reward', $2, $3, NOW())`, [referrer.id, REFERRAL_REWARD, `referral:${user.id}`]);
-        }
-      }
       return { userId: Number(user.id), referralCode: newReferralCode };
     });
 
