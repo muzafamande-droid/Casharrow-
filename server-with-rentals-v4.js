@@ -10,8 +10,8 @@ const pgFinancial = require("./pg-financial-routes");
 
 const PORT = process.env.PORT || 3000;
 
-// PostgreSQL is the only operational source of truth. Remove every legacy
-// SQLite route before mounting the durable PostgreSQL implementations.
+// PostgreSQL is the only operational source of truth. Remove legacy SQLite
+// routes before mounting the durable PostgreSQL implementations.
 if (app._router && Array.isArray(app._router.stack)) {
   const retiredRoutes = new Set([
     "/api/register", "/api/login", "/api/admin", "/api/admin/dashboard", "/api/admin/users",
@@ -30,19 +30,19 @@ app.use("/api", rental.router);
 app.use("/api", withdrawal.router);
 app.use("/api", mobileMoney.router);
 
+// Keep homepage bootstrapping in one place. server.js already injects the
+// enhancement script; this wrapper only adds the guest guard and the single
+// authoritative rental catalog. No second rental renderer is loaded.
 const originalSend = app.response.send;
 app.response.send = function (body) {
   if (this.req && this.req.path === "/" && typeof body === "string" && body.includes("</body>")) {
-    // Hide the member dashboard before JavaScript runs for a guest. The
-    // resilient rental catalog is mounted immediately and remains visible
-    // even if the API is slow or temporarily unavailable.
     const guestBootstrapStyle = '<style id="casharrowGuestBootstrap">body.ca-prelogin .container>.balance,body.ca-prelogin .container>.section,body.ca-prelogin #todayTasks,body.ca-prelogin #rewardsSection,body.ca-prelogin #teamSection,body.ca-prelogin #withdrawSection,body.ca-prelogin #userTransactions,body.ca-prelogin .bottom{display:none!important}</style>';
     const guestBootstrapScript = '<script>try{if(!localStorage.getItem("casharrowToken"))document.body.classList.add("ca-prelogin")}catch(e){}</script>';
     body = body.replace("</head>", `${guestBootstrapStyle}</head>`);
     body = body.replace("<body", `<body>${guestBootstrapScript}`);
-    body = body.replace(/<script src="\/casharrow-enhancements\.js"><\/script>/g,
-      '<script src="/casharrow-enhancements.js?v=clean3"></script>');
-    body = body.replace("</body>", '  <script src="/rental-catalog.js?v=final1"></script><script src="/rental-ui.js?v=final1"></script><script src="/account-button-fix.js?v=1"></script><script src="/mobile-money-ui.js?v=auto-mm4"></script></body>');
+    body = body.replace(/<script src="\/casharrow-enhancements\.js"><\/script>/g, '<script src="/casharrow-enhancements.js?v=clean4"></script>');
+    body = body.replace(/\s*<script src="\/rental-ui\.js[^>]*><\/script>/g, "");
+    body = body.replace("</body>", '  <script src="/rental-catalog.js?v=final2"></script></body>');
   }
   return originalSend.call(this, body);
 };
