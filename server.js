@@ -467,7 +467,9 @@ app.get("/api/transactions", authenticateToken, (req, res) => {
   });
 });
 
-// Create withdrawal request
+// Create withdrawal request. Pending withdrawals reserve available balance
+// logically, so a user cannot submit several pending requests that together
+// exceed their current balance. The actual debit still happens on approval.
 app.post("/api/withdrawals", authenticateToken, (req, res) => {
   const { amount, account } = req.body;
 
@@ -487,36 +489,69 @@ app.post("/api/withdrawals", authenticateToken, (req, res) => {
     });
   }
 
-  const user = db.prepare(`
-    SELECT id, balance
-    FROM users
-    WHERE id = ?
-  `).get(req.user.id);
-
-  if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: "User not found"
-    });
-  }
-
-  if (withdrawalAmount > user.balance) {
+  const accountNumber = String(account).trim();
+  if (!accountNumber) {
     return res.status(400).json({
       success: false,
-      message: "Insufficient balance"
+      message: "Account is required"
     });
   }
 
-  const result = db.prepare(`
-    INSERT INTO withdrawals (user_id, amount, account, status, date)
-    VALUES (?, ?, ?, 'pending', datetime('now'))
-  `).run(req.user.id, withdrawalAmount, account);
+  try {
+    const result = db.transaction(() => {
+      const user = db.prepare(`
+        SELECT id, balance
+        FROM users
+        WHERE id = ?
+      `).get(req.user.id);
 
-  res.status(201).json({
-    success: true,
-    message: "Withdrawal request submitted",
-    withdrawalId: result.lastInsertRowid
-  });
+      if (!user) {
+        return { error: "User not found", status: 404 };
+      }
+
+      const pending = db.prepare(`
+        SELECT COALESCE(SUM(amount), 0) AS amount
+        FROM withdrawals
+        WHERE user_id = ? AND status = 'pending'
+      `).get(req.user.id);
+
+      const pendingAmount = Number(pending.amount || 0);
+      const availableBalance = Number(user.balance) - pendingAmount;
+
+      if (withdrawalAmount > availableBalance) {
+        return {
+          error: "Insufficient available balance. You already have pending withdrawals.",
+          status: 400
+        };
+      }
+
+      const insert = db.prepare(`
+        INSERT INTO withdrawals (user_id, amount, account, status, date)
+        VALUES (?, ?, ?, 'pending', datetime('now'))
+      `).run(req.user.id, withdrawalAmount, accountNumber);
+
+      return { success: true, withdrawalId: insert.lastInsertRowid };
+    })();
+
+    if (result.error) {
+      return res.status(result.status).json({
+        success: false,
+        message: result.error
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Withdrawal request submitted",
+      withdrawalId: result.withdrawalId
+    });
+  } catch (error) {
+    console.error("Withdrawal request failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to submit withdrawal request"
+    });
+  }
 });
 
 // Tasks
