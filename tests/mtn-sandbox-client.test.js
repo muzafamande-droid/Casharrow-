@@ -3,17 +3,18 @@ const test = require("node:test");
 
 const momo = require("../mobile-money-sandbox");
 
-test("sandbox configuration defaults are safe", () => {
+test("sandbox configuration defaults are safe for Uganda", () => {
   delete process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED;
   delete process.env.MTN_COLLECTION_SUBSCRIPTION_KEY;
   delete process.env.MTN_API_USER;
   delete process.env.MTN_API_KEY;
   delete process.env.MTN_BASE_URL;
+  delete process.env.MTN_CURRENCY;
 
   const config = momo.config();
   assert.equal(config.baseUrl, momo.SANDBOX_BASE_URL);
   assert.equal(config.targetEnvironment, "sandbox");
-  assert.equal(config.currency, "EUR");
+  assert.equal(config.currency, "UGX");
   assert.equal(momo.configured(), false);
 });
 
@@ -25,6 +26,17 @@ test("sandbox integration cannot be redirected to a production endpoint", () => 
   process.env.MTN_BASE_URL = "https://proxy.momoapi.mtn.com";
   assert.equal(momo.configured(), false);
   delete process.env.MTN_BASE_URL;
+  delete process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED;
+  delete process.env.MTN_COLLECTION_SUBSCRIPTION_KEY;
+  delete process.env.MTN_API_USER;
+  delete process.env.MTN_API_KEY;
+});
+
+test("sandbox configuration rejects non-UGX currency", () => {
+  process.env.MTN_CURRENCY = "EUR";
+  assert.equal(momo.config().currency, "EUR");
+  assert.equal(momo.configured(), false);
+  delete process.env.MTN_CURRENCY;
 });
 
 test("Ugandan phone numbers normalize consistently", () => {
