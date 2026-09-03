@@ -6,21 +6,18 @@ const PORT = process.env.PORT || 3000;
 
 app.use("/api", rental.router);
 
-// Load the dynamic rental interface after the existing CashArrow enhancements.
-// Wrapping res.send keeps the existing authentication/wallet UI untouched.
-app.use((req, res, next) => {
-  const originalSend = res.send.bind(res);
-  res.send = body => {
-    if (req.path === "/" && typeof body === "string" && body.includes("</body>")) {
-      body = body.replace(
-        "</body>",
-        '  <script src="/rental-ui.js"></script>\n</body>'
-      );
-    }
-    return originalSend(body);
-  };
-  next();
-});
+// Add the dynamic rental UI to the existing home response without replacing
+// the working CashArrow authentication, wallet, deposit or referral UI.
+const originalSend = app.response.send;
+app.response.send = function (body) {
+  if (this.req && this.req.path === "/" && typeof body === "string" && body.includes("</body>")) {
+    body = body.replace(
+      "</body>",
+      '  <script src="/rental-ui.js"></script>\n</body>'
+    );
+  }
+  return originalSend.call(this, body);
+};
 
 async function start() {
   await db.ready;
