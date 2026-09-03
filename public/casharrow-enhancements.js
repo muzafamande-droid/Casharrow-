@@ -28,20 +28,6 @@
     password.insertAdjacentElement("afterend", confirm);
   }
 
-  // Rental presentation is owned by rental-ui.js. Load it here as a second
-  // safety path so the rental catalog is still mounted if the server-side
-  // HTML injection is bypassed or cached by the hosting layer.
-  function loadRentalUI() {
-    if (window.__casharrowRentalUILoadRequested) return;
-    window.__casharrowRentalUILoadRequested = true;
-    if (document.querySelector('script[data-casharrow-rental-ui]')) return;
-    const script = document.createElement("script");
-    script.src = "/rental-ui.js?v=live2";
-    script.async = false;
-    script.dataset.casharrowRentalUi = "true";
-    document.body.appendChild(script);
-  }
-
   function addDepositUI() {
     if (document.getElementById("casharrowDeposit") || !token()) return;
     const wallet = document.getElementById("userWallet");
@@ -157,6 +143,5 @@
     addConfirmPassword();
     if(token()) addDepositUI();
     addLogoutControl();
-    loadRentalUI();
   });
 })();
