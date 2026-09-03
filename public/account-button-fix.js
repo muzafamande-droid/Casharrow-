@@ -1,6 +1,21 @@
 (() => {
-  function fixAccountButton() {
+  function openLogin() {
+    if (typeof window.openModal === "function") {
+      window.openModal("login");
+    }
+  }
+
+  function fixCashArrowButtons() {
+    // The guest Login button must always open the login modal.
     document.addEventListener("click", (event) => {
+      const loginButton = event.target.closest(".casharrow-guest-actions button.secondary");
+      if (loginButton) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        openLogin();
+        return;
+      }
+
       const navs = document.querySelectorAll(".bottom .nav");
       const account = navs[navs.length - 1];
       if (!account || !account.contains(event.target)) return;
@@ -21,15 +36,13 @@
         return;
       }
 
-      if (typeof window.openModal === "function") {
-        window.openModal("login");
-      }
+      openLogin();
     }, true);
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", fixAccountButton, { once: true });
+    document.addEventListener("DOMContentLoaded", fixCashArrowButtons, { once: true });
   } else {
-    fixAccountButton();
+    fixCashArrowButtons();
   }
 })();
