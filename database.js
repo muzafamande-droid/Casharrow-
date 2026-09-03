@@ -14,9 +14,6 @@ const pool = process.env.DATABASE_URL
     })
   : null;
 
-// Keep the existing synchronous SQLite API so the referral, wallet, deposit,
-// withdrawal and authentication routes do not need to be rewritten at once.
-// PostgreSQL is the durable backing store used on Render.
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -186,6 +183,21 @@ async function createPostgresSchema() {
   `);
 }
 
+function sqliteValue(value) {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "number" && !Number.isFinite(value)) return null;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "bigint" || Buffer.isBuffer(value)) return value;
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+async function upsertPostgresRow(client, table, row) {
+  const placeholders = table.columns.map((_, i) => `$${i + 1}`).join(", ");
+  const updates = table.columns.filter(column => column !== "id").map(column => `${column} = EXCLUDED.${column}`).join(", ");
+  const values = table.columns.map(column => sqliteValue(row[column]));
+  await client.query(`INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updates}`, values);
+}
+
 async function syncAllToPostgres() {
   if (!pool) return;
   const client = await pool.connect();
@@ -193,11 +205,7 @@ async function syncAllToPostgres() {
     await client.query("BEGIN");
     for (const table of tables) {
       const rows = sqlite.prepare(`SELECT ${table.columns.join(", ")} FROM ${table.name}`).all();
-      for (const row of rows) {
-        const placeholders = table.columns.map((_, i) => `$${i + 1}`).join(", ");
-        const updates = table.columns.filter(column => column !== "id").map(column => `${column} = EXCLUDED.${column}`).join(", ");
-        await client.query(`INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updates}`, table.columns.map(column => row[column]));
-      }
+      for (const row of rows) await upsertPostgresRow(client, table, row);
     }
     await client.query("COMMIT");
   } catch (error) {
@@ -222,9 +230,7 @@ async function syncPendingChanges() {
       }
       const row = sqlite.prepare(`SELECT ${table.columns.join(", ")} FROM ${table.name} WHERE id = ?`).get(change.row_id);
       if (!row) continue;
-      const placeholders = table.columns.map((_, i) => `$${i + 1}`).join(", ");
-      const updates = table.columns.filter(column => column !== "id").map(column => `${column} = EXCLUDED.${column}`).join(", ");
-      await client.query(`INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT (id) DO UPDATE SET ${updates}`, table.columns.map(column => row[column]));
+      await upsertPostgresRow(client, table, row);
     }
     await client.query("COMMIT");
     sqlite.prepare("DELETE FROM _sync_changes WHERE seq <= ?").run(changes[changes.length - 1].seq);
@@ -251,7 +257,7 @@ async function restoreFromPostgres() {
     const insert = sqlite.prepare(`INSERT INTO ${table.name} (${table.columns.join(", ")}) VALUES (${table.columns.map(() => "?").join(", ")})`);
     const restore = sqlite.transaction(items => {
       for (const row of items) {
-        const values = table.columns.map(column => row[column] === undefined ? null : row[column]);
+        const values = table.columns.map(column => sqliteValue(row[column]));
         insert.run(...values);
       }
     });
