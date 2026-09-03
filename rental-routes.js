@@ -25,14 +25,32 @@ for (const series of ["A", "B", "C", "D"]) {
 async function ensurePgSchema() {
   if (!pool) return;
   await pool.query(`CREATE TABLE IF NOT EXISTS products (id BIGINT PRIMARY KEY,series TEXT NOT NULL,code TEXT UNIQUE NOT NULL,name TEXT NOT NULL,description TEXT,image_url TEXT,rental_fee DOUBLE PRECISION NOT NULL DEFAULT 0,rental_days BIGINT NOT NULL DEFAULT 0,return_amount DOUBLE PRECISION,active BIGINT NOT NULL DEFAULT 0,featured BIGINT NOT NULL DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP); CREATE TABLE IF NOT EXISTS rentals (id BIGINT PRIMARY KEY,user_id BIGINT NOT NULL,product_id BIGINT NOT NULL,rental_fee DOUBLE PRECISION NOT NULL,rental_days BIGINT NOT NULL,start_at TEXT NOT NULL,end_at TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active',return_amount DOUBLE PRECISION,completed_at TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);`);
-  const localProducts = sqlite.prepare("SELECT * FROM products").all();
-  for (const p of localProducts) await pool.query(`INSERT INTO products (id,series,code,name,description,image_url,rental_fee,rental_days,return_amount,active,featured,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO UPDATE SET series=EXCLUDED.series,code=EXCLUDED.code,name=EXCLUDED.name,description=EXCLUDED.description,image_url=EXCLUDED.image_url,rental_fee=EXCLUDED.rental_fee,rental_days=EXCLUDED.rental_days,return_amount=EXCLUDED.return_amount,active=EXCLUDED.active,featured=EXCLUDED.featured`, [p.id,p.series,p.code,p.name,p.description,p.image_url,p.rental_fee,p.rental_days,p.return_amount,p.active,p.featured,p.created_at]);
+
+  const pgProducts = (await pool.query("SELECT * FROM products ORDER BY id")).rows;
+  if (pgProducts.length === 0) {
+    const localProducts = sqlite.prepare("SELECT * FROM products ORDER BY id").all();
+    for (const p of localProducts) await pool.query(`INSERT INTO products (id,series,code,name,description,image_url,rental_fee,rental_days,return_amount,active,featured,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO NOTHING`, [p.id,p.series,p.code,p.name,p.description,p.image_url,p.rental_fee,p.rental_days,p.return_amount,p.active,p.featured,p.created_at]);
+  } else {
+    const pgById = new Map(pgProducts.map(p => [Number(p.id), p]));
+    const localProducts = sqlite.prepare("SELECT * FROM products ORDER BY id").all();
+    const update = sqlite.prepare("UPDATE products SET series=?,code=?,name=?,description=?,image_url=?,rental_fee=?,rental_days=?,return_amount=?,active=?,featured=?,created_at=? WHERE id=?");
+    const restoreProducts = sqlite.transaction(items => {
+      for (const p of items) {
+        const durable = pgById.get(Number(p.id));
+        if (durable) update.run(durable.series,durable.code,durable.name,durable.description,durable.image_url,durable.rental_fee,durable.rental_days,durable.return_amount,durable.active,durable.featured,durable.created_at,p.id);
+      }
+    });
+    restoreProducts(localProducts);
+  }
+
   const rows = (await pool.query("SELECT * FROM rentals ORDER BY id")).rows;
   if (rows.length) {
-    sqlite.exec("PRAGMA foreign_keys = OFF"); sqlite.prepare("DELETE FROM rentals").run();
+    sqlite.exec("PRAGMA foreign_keys = OFF");
+    sqlite.prepare("DELETE FROM rentals").run();
     const insert = sqlite.prepare(`INSERT INTO rentals (id,user_id,product_id,rental_fee,rental_days,start_at,end_at,status,return_amount,completed_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
     const restore = sqlite.transaction(items => { for (const r of items) insert.run(r.id,r.user_id,r.product_id,r.rental_fee,r.rental_days,r.start_at,r.end_at,r.status,r.return_amount,r.completed_at,r.created_at); });
-    restore(rows); sqlite.exec("PRAGMA foreign_keys = ON");
+    restore(rows);
+    sqlite.exec("PRAGMA foreign_keys = ON");
   } else await syncRentalsToPostgres();
 }
 
