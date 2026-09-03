@@ -137,9 +137,11 @@ test("deposits stay pending until approved and are credited exactly once", async
 
   assert.equal(depositResponse.status, 201);
   assert.equal(deposit.success, true);
+
+  // A pending deposit must not increase the balance before admin approval.
   assert.equal(
     db.prepare("SELECT balance FROM users WHERE id = ?").get(referrer.id).balance,
-    15000
+    10000
   );
 
   const { response: adminLoginResponse, data: adminLogin } = await login(
@@ -161,21 +163,21 @@ test("deposits stay pending until approved and are credited exactly once", async
 
   assert.equal(
     db.prepare("SELECT balance FROM users WHERE id = ?").get(referrer.id).balance,
-    25000
+    20000
   );
 
   const secondApprove = await fetch(`${baseUrl}/api/admin/deposits/${deposit.depositId}/approve`, {
     method: "POST",
     headers: adminHeaders
   });
-  assert.equal(secondApprove.status, 400);
+  assert.equal(secondApprove.status, 409);
   assert.equal(
     db.prepare("SELECT balance FROM users WHERE id = ?").get(referrer.id).balance,
-    25000
+    20000
   );
 
   const depositTransaction = db.prepare(
-    "SELECT * FROM transactions WHERE user_id = ? AND type = 'deposit' AND amount = ?"
+    "SELECT * FROM transactions WHERE user_id = ? AND type = 'Deposit' AND amount = ?"
   ).get(referrer.id, 10000);
   assert.ok(depositTransaction);
 });
