@@ -21,8 +21,7 @@ express.response.sendFile = function (file, options, callback) {
 <style>
 /* Compact CashArrow member dashboard */
 body.ca-compact .container{padding-bottom:16px}
-body.ca-compact #totalBalance{display:none!important}
-body.ca-compact #totalBalance + .actions{margin-top:0}
+body.ca-compact main.container > .cardbox:first-child{display:none!important}
 body.ca-compact main.container > #memberTools,
 body.ca-compact main.container > #todayTasks,
 body.ca-compact main.container > #rewardsSection,
@@ -32,61 +31,74 @@ body.ca-compact #transactions{display:none!important}
 body.ca-compact #casharrowMyRentals{margin-bottom:12px}
 body.ca-compact #rentalCatalog{margin-top:10px}
 body.ca-compact .section-title{font-size:18px;margin:16px 0 8px}
+body.ca-compact #userWallet{margin-bottom:12px}
 </style>
 <script>
 (() => {
-  const compactDashboard = () => {
-    document.body.classList.add('ca-compact');
+  const isMember = () => !!localStorage.getItem('casharrowToken');
+
+  const arrange = () => {
+    const member = isMember();
+    document.body.classList.toggle('ca-compact', member);
+    if (!member) return;
 
     const wallet = document.getElementById('userWallet');
+    const transactions = document.getElementById('transactions');
     const rentals = document.getElementById('casharrowMyRentals');
     const catalog = document.getElementById('rentalCatalog');
-    const transactions = document.getElementById('transactions');
     const withdraw = document.getElementById('withdrawSection');
 
-    // Keep the useful member flow short: Wallet -> My Rentals -> Rental Products -> Transactions.
-    if (wallet && rentals && wallet.nextElementSibling !== rentals) {
-      wallet.insertAdjacentElement('afterend', rentals);
+    // Short member flow: Wallet -> Transactions -> My Rentals -> Rental Products.
+    if (wallet && transactions && wallet.nextElementSibling !== transactions) {
+      wallet.insertAdjacentElement('afterend', transactions);
+    }
+    if (transactions && rentals && transactions.nextElementSibling !== rentals) {
+      transactions.insertAdjacentElement('afterend', rentals);
     }
     if (rentals && catalog && rentals.nextElementSibling !== catalog) {
       rentals.insertAdjacentElement('afterend', catalog);
     }
-    if (catalog && transactions && catalog.nextElementSibling !== transactions) {
-      catalog.insertAdjacentElement('afterend', transactions);
+
+    if (withdraw && withdraw.dataset.cashArrowOpen !== '1') {
+      withdraw.style.display = 'none';
+    }
+    if (transactions && transactions.dataset.cashArrowOpen !== '1') {
+      transactions.style.display = 'none';
     }
 
-    if (withdraw) withdraw.style.display = 'none';
-    if (transactions) transactions.style.display = 'none';
-
-    // My Rentals must exist as soon as a logged-in member opens the dashboard.
-    if (localStorage.getItem('casharrowToken') && typeof window.cashArrowRefreshRentals === 'function') {
+    // Create/load My Rentals when a logged-in member first opens the dashboard.
+    if (typeof window.cashArrowRefreshRentals === 'function' && !window.__cashArrowRentalRefreshStarted) {
+      window.__cashArrowRentalRefreshStarted = true;
       window.cashArrowRefreshRentals();
     }
   };
 
-  const installToggles = () => {
-    compactDashboard();
-
+  const hookInteractions = () => {
     if (typeof window.loadTransactions === 'function' && !window.__cashArrowCompactTransactions) {
-      const originalLoadTransactions = window.loadTransactions;
+      const original = window.loadTransactions;
       window.loadTransactions = async function () {
         const section = document.getElementById('transactions');
+        if (section) {
+          section.dataset.cashArrowOpen = '1';
+          section.style.display = 'block';
+        }
+        arrange();
+        if (section) section.scrollIntoView({behavior:'smooth', block:'nearest'});
+        const result = await original.apply(this, arguments);
         if (section) section.style.display = 'block';
-        const result = await originalLoadTransactions.apply(this, arguments);
-        compactDashboard();
-        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return result;
       };
       window.__cashArrowCompactTransactions = true;
     }
 
     if (typeof window.openWithdraw === 'function' && !window.__cashArrowCompactWithdraw) {
-      const originalOpenWithdraw = window.openWithdraw;
+      const original = window.openWithdraw;
       window.openWithdraw = function () {
-        const result = originalOpenWithdraw.apply(this, arguments);
         const section = document.getElementById('withdrawSection');
+        if (section) section.dataset.cashArrowOpen = '1';
+        const result = original.apply(this, arguments);
         if (section && section.style.display !== 'none') {
-          section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          section.scrollIntoView({behavior:'smooth', block:'nearest'});
         }
         return result;
       };
@@ -95,15 +107,20 @@ body.ca-compact .section-title{font-size:18px;margin:16px 0 8px}
   };
 
   const start = () => {
-    installToggles();
+    arrange();
+    hookInteractions();
     const container = document.querySelector('main.container');
-    if (container) {
-      new MutationObserver(installToggles).observe(container, { childList: true, subtree: true });
+    if (container && !window.__cashArrowCompactObserver) {
+      window.__cashArrowCompactObserver = new MutationObserver(() => {
+        arrange();
+        hookInteractions();
+      });
+      window.__cashArrowCompactObserver.observe(container, {childList:true, subtree:true});
     }
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start, { once: true });
+    document.addEventListener('DOMContentLoaded', start, {once:true});
   } else {
     start();
   }
