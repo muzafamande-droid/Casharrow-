@@ -33,6 +33,10 @@ async function register(user) {
 }
 
 test.before(async () => {
+  // PostgreSQL restore must finish before the HTTP server starts accepting
+  // requests. Otherwise the async restore can replace the SQLite snapshot
+  // while a test is registering or logging in users.
+  await db.ready;
   server = app.listen(0);
   await new Promise(resolve => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -66,6 +70,8 @@ test("referrals save the link owner, grow their team, and reward exactly once", 
 
   const referrer = db.prepare("SELECT id, balance FROM users WHERE phone = ?")
     .get("0700000002");
+  assert.ok(referrer);
+
   const invitees = db.prepare("SELECT referred_by FROM users WHERE phone LIKE '070000000%'")
     .all();
   const team = db.prepare("SELECT member_name, earn FROM team WHERE user_id = ?")
@@ -137,12 +143,18 @@ test("registration rejects mismatched passwords", async () => {
 });
 
 test("deposits stay pending until approved and are credited exactly once", async () => {
+  const referrer = db.prepare("SELECT id FROM users WHERE phone = ?")
+    .get("0700000002");
+  assert.ok(referrer);
+
   const loginResponse = await fetch(`${baseUrl}/api/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ phone: "0700000002", password: "password" })
   });
   const login = await loginResponse.json();
+  assert.equal(loginResponse.status, 200);
+
   const authHeaders = {
     Authorization: `Bearer ${login.token}`,
     "Content-Type": "application/json"
@@ -162,7 +174,7 @@ test("deposits stay pending until approved and are credited exactly once", async
   assert.equal(depositResponse.status, 201);
   assert.equal(deposit.success, true);
   assert.equal(
-    db.prepare("SELECT balance FROM users WHERE id = ?").get(2).balance,
+    db.prepare("SELECT balance FROM users WHERE id = ?").get(referrer.id).balance,
     15000
   );
 
@@ -172,6 +184,8 @@ test("deposits stay pending until approved and are credited exactly once", async
     body: JSON.stringify({ phone: "admin", password: "admin-password" })
   });
   const adminLogin = await adminLoginResponse.json();
+  assert.equal(adminLoginResponse.status, 200);
+
   const adminHeaders = {
     Authorization: `Bearer ${adminLogin.token}`,
     "Content-Type": "application/json"
@@ -184,7 +198,7 @@ test("deposits stay pending until approved and are credited exactly once", async
   assert.equal(approveResponse.status, 200);
 
   assert.equal(
-    db.prepare("SELECT balance FROM users WHERE id = ?").get(2).balance,
+    db.prepare("SELECT balance FROM users WHERE id = ?").get(referrer.id).balance,
     25000
   );
 
@@ -194,13 +208,14 @@ test("deposits stay pending until approved and are credited exactly once", async
   });
   assert.equal(secondApprove.status, 409);
   assert.equal(
-    db.prepare("SELECT balance FROM users WHERE id = ?").get(2).balance,
+    db.prepare("SELECT balance FROM users WHERE id = ?").get(referrer.id).balance,
     25000
   );
 
   const depositTransaction = db.prepare(`
     SELECT amount FROM transactions
     WHERE user_id = ? AND type = 'Deposit'
-  `).get(2);
+  `).get(referrer.id);
+  assert.ok(depositTransaction);
   assert.equal(depositTransaction.amount, 10000);
 });
