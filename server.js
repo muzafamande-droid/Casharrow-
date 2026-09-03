@@ -882,11 +882,12 @@ async function startServer() {
   });
 }
 
+// When this file is launched directly (for example by a hosting platform
+// whose Start Command is `node server.js`), hand startup to the authoritative
+// wrapper. This guarantees the same PostgreSQL routes and server-rendered
+// rental catalog are used regardless of the configured start command.
 if (require.main === module) {
-  startServer().catch(error => {
-    console.error("CashArrow startup failed:", error);
-    process.exit(1);
-  });
+  require("./server-with-rentals-v4");
+} else {
+  module.exports = app;
 }
-
-module.exports = app;
