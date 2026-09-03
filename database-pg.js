@@ -32,6 +32,16 @@ async function transaction(work) {
   }
 }
 
+async function syncSequence(sequence, table) {
+  const result = await query(`SELECT MAX(id) AS max_id FROM ${table}`);
+  const maxId = result.rows[0].max_id;
+  if (maxId === null) {
+    await query(`ALTER SEQUENCE ${sequence} RESTART WITH 1`);
+  } else {
+    await query(`SELECT setval($1::regclass, $2, true)`, [sequence, Number(maxId)]);
+  }
+}
+
 async function init() {
   await query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -122,15 +132,6 @@ async function init() {
     CREATE SEQUENCE IF NOT EXISTS casharrow_team_id_seq;
     CREATE SEQUENCE IF NOT EXISTS casharrow_referral_rewards_id_seq;
 
-    SELECT setval('casharrow_users_id_seq', COALESCE((SELECT MAX(id) FROM users), 0), true);
-    SELECT setval('casharrow_tasks_id_seq', COALESCE((SELECT MAX(id) FROM tasks), 0), true);
-    SELECT setval('casharrow_rewards_id_seq', COALESCE((SELECT MAX(id) FROM rewards), 0), true);
-    SELECT setval('casharrow_transactions_id_seq', COALESCE((SELECT MAX(id) FROM transactions), 0), true);
-    SELECT setval('casharrow_withdrawals_id_seq', COALESCE((SELECT MAX(id) FROM withdrawals), 0), true);
-    SELECT setval('casharrow_deposits_id_seq', COALESCE((SELECT MAX(id) FROM deposits), 0), true);
-    SELECT setval('casharrow_team_id_seq', COALESCE((SELECT MAX(id) FROM team), 0), true);
-    SELECT setval('casharrow_referral_rewards_id_seq', COALESCE((SELECT MAX(id) FROM referral_rewards), 0), true);
-
     CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id);
     CREATE INDEX IF NOT EXISTS idx_rewards_user ON rewards(user_id);
     CREATE INDEX IF NOT EXISTS idx_transactions_user_date ON transactions(user_id, date DESC);
@@ -140,7 +141,6 @@ async function init() {
     CREATE INDEX IF NOT EXISTS idx_referral_referrer ON referral_rewards(referrer_id);
   `);
 
-  // Add columns required by newer deployments without destroying existing data.
   await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS reserved_balance NUMERIC(18,2) NOT NULL DEFAULT 0");
   await query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS reference TEXT");
   await query("ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS network TEXT");
@@ -169,6 +169,15 @@ async function init() {
   await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_deposits_provider_reference ON deposits(provider_reference) WHERE provider_reference IS NOT NULL");
   await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_withdrawals_idempotency_key ON withdrawals(idempotency_key) WHERE idempotency_key IS NOT NULL");
   await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_withdrawals_provider_reference ON withdrawals(provider_reference) WHERE provider_reference IS NOT NULL");
+
+  await syncSequence("casharrow_users_id_seq", "users");
+  await syncSequence("casharrow_tasks_id_seq", "tasks");
+  await syncSequence("casharrow_rewards_id_seq", "rewards");
+  await syncSequence("casharrow_transactions_id_seq", "transactions");
+  await syncSequence("casharrow_withdrawals_id_seq", "withdrawals");
+  await syncSequence("casharrow_deposits_id_seq", "deposits");
+  await syncSequence("casharrow_team_id_seq", "team");
+  await syncSequence("casharrow_referral_rewards_id_seq", "referral_rewards");
 
   const admin = await query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
   if (admin.rowCount === 0) {
