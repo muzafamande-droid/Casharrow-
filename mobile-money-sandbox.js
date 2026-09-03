@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 
 const SANDBOX_BASE_URL = "https://sandbox.momodeveloper.mtn.com";
+const DEFAULT_CURRENCY = "UGX";
 
 function normalizeMsisdn(value) {
   const digits = String(value || "").replace(/\D/g, "");
@@ -14,7 +15,7 @@ function config() {
   return {
     baseUrl: String(process.env.MTN_BASE_URL || SANDBOX_BASE_URL).replace(/\/$/, ""),
     targetEnvironment: "sandbox",
-    currency: String(process.env.MTN_CURRENCY || "EUR").trim().toUpperCase(),
+    currency: String(process.env.MTN_CURRENCY || DEFAULT_CURRENCY).trim().toUpperCase(),
     enabled: process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED === "true",
     subscriptionKey: process.env.MTN_COLLECTION_SUBSCRIPTION_KEY,
     apiUser: process.env.MTN_API_USER,
@@ -24,7 +25,7 @@ function config() {
 
 function configured() {
   const c = config();
-  return c.enabled && Boolean(c.subscriptionKey && c.apiUser && c.apiKey) && c.baseUrl === SANDBOX_BASE_URL;
+  return c.enabled && Boolean(c.subscriptionKey && c.apiUser && c.apiKey) && c.baseUrl === SANDBOX_BASE_URL && c.currency === DEFAULT_CURRENCY;
 }
 
 function makeReference(depositId) {
@@ -72,6 +73,9 @@ async function getAccessToken() {
 
 async function requestPayment({ amount, phone, reference, callbackUrl }) {
   const c = config();
+  if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) throw new Error("Invalid MTN payment amount");
+  const normalizedPhone = normalizeMsisdn(phone);
+  if (!normalizedPhone) throw new Error("Invalid Ugandan mobile money number");
   const accessToken = await getAccessToken();
   const headers = {
     Authorization: `Bearer ${accessToken}`,
@@ -89,7 +93,7 @@ async function requestPayment({ amount, phone, reference, callbackUrl }) {
       amount: String(amount),
       currency: c.currency,
       externalId: `CASHARROW-${reference}`,
-      payer: { partyIdType: "MSISDN", partyId: phone },
+      payer: { partyIdType: "MSISDN", partyId: normalizedPhone },
       payerMessage: "CashArrow wallet deposit",
       payeeNote: "CashArrow wallet deposit"
     })
@@ -118,4 +122,4 @@ async function getPaymentStatus(reference) {
   return result.body;
 }
 
-module.exports = { SANDBOX_BASE_URL, normalizeMsisdn, config, configured, makeReference, requestPayment, getPaymentStatus };
+module.exports = { SANDBOX_BASE_URL, DEFAULT_CURRENCY, normalizeMsisdn, config, configured, makeReference, requestPayment, getPaymentStatus };
