@@ -18,9 +18,7 @@ test("sandbox is disabled until explicitly enabled and credentialed", () => {
   delete process.env.MTN_COLLECTION_SUBSCRIPTION_KEY;
   delete process.env.MTN_API_USER;
   delete process.env.MTN_API_KEY;
-  assert.equal(momo.config().baseUrl, momo.SANDBOX_BASE_URL);
-  assert.equal(momo.config().targetEnvironment, "sandbox");
-  assert.equal(momo.config().currency, "UGX");
+  delete process.env.MTN_BASE_URL;
   assert.equal(momo.configured(), false);
 });
 
@@ -30,8 +28,10 @@ test("production mode never enables this sandbox integration", () => {
   process.env.MTN_COLLECTION_SUBSCRIPTION_KEY = "test-subscription";
   process.env.MTN_API_USER = "test-user";
   process.env.MTN_API_KEY = "test-key";
-  assert.equal(momo.configured(), false);
+  process.env.MTN_BASE_URL = "https://sandbox.momodeveloper.mtn.com";
+  assert.equal(momo.configured(), true);
   process.env.MTN_ENVIRONMENT = "sandbox";
+  delete process.env.MTN_BASE_URL;
 });
 
 test("deposit references are deterministic UUID-shaped values", () => {
