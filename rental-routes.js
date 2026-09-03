@@ -7,6 +7,37 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is not configured");
 
+const RENTAL_POLICY = {
+  A: [
+    { fee: 30000, returnAmount: 45000, days: 18 },
+    { fee: 70000, returnAmount: 250000, days: 18 },
+    { fee: 100000, returnAmount: 400000, days: 18 },
+    { fee: 150000, returnAmount: 600000, days: 18 },
+    { fee: 200000, returnAmount: 850000, days: 18 }
+  ],
+  B: [
+    { fee: 40000, returnAmount: 240000, days: 28 },
+    { fee: 80000, returnAmount: 600000, days: 28 },
+    { fee: 100000, returnAmount: 1280000, days: 28 },
+    { fee: 250000, returnAmount: 3040000, days: 28 },
+    { fee: 450000, returnAmount: 4150000, days: 28 }
+  ],
+  C: [
+    { fee: 100000, returnAmount: 1200000, days: 100 },
+    { fee: 250000, returnAmount: 2080000, days: 100 },
+    { fee: 400000, returnAmount: 4450000, days: 100 },
+    { fee: 500000, returnAmount: 6800000, days: 100 },
+    { fee: 800000, returnAmount: 11250000, days: 100 }
+  ],
+  D: [
+    { fee: 200000, returnAmount: 4000000, days: 120 },
+    { fee: 350000, returnAmount: 6500000, days: 120 },
+    { fee: 500000, returnAmount: 8000000, days: 120 },
+    { fee: 850000, returnAmount: 18050000, days: 120 },
+    { fee: 1000000, returnAmount: 22000000, days: 120 }
+  ]
+};
+
 function authenticate(req, res, next) {
   const header = req.headers.authorization || "";
   if (!header.startsWith("Bearer ")) return res.status(401).json({ success: false, message: "Authentication required" });
@@ -53,24 +84,33 @@ async function ensurePgSchema() {
     CREATE INDEX IF NOT EXISTS idx_rentals_status_end ON rentals(status, end_at);
   `);
 
-  const products = await db.query("SELECT id FROM products LIMIT 1");
-  if (products.rowCount === 0) {
-    for (const series of ["A", "B", "C", "D"]) {
-      for (let i = 1; i <= 5; i += 1) {
-        const code = `${series}${i}`;
-        await db.query(`
-          INSERT INTO products (id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured)
-          VALUES (nextval('casharrow_products_id_seq'), $1, $2, $3, $4, $5, 0, 0, NULL, FALSE, $6)
-          ON CONFLICT (code) DO NOTHING
-        `, [
-          series,
-          code,
-          `CashArrow Generator ${code}`,
-          `${series} Series generator rental product ${code}. Full specifications and verified rental terms will be published before activation.`,
-          "/product-placeholder.svg",
-          i === 1
-        ]);
-      }
+  for (const [series, terms] of Object.entries(RENTAL_POLICY)) {
+    for (let i = 0; i < terms.length; i += 1) {
+      const code = `${series}${i + 1}`;
+      const term = terms[i];
+      await db.query(`
+        INSERT INTO products (id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured)
+        VALUES (nextval('casharrow_products_id_seq'), $1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9)
+        ON CONFLICT (code) DO UPDATE SET
+          series = EXCLUDED.series,
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          rental_fee = EXCLUDED.rental_fee,
+          rental_days = EXCLUDED.rental_days,
+          return_amount = EXCLUDED.return_amount,
+          active = TRUE,
+          featured = EXCLUDED.featured
+      `, [
+        series,
+        code,
+        `CashArrow Generator ${code}`,
+        `${series} Series generator rental product ${code}. ${term.days}-day rental term.`,
+        "/product-placeholder.svg",
+        term.fee,
+        term.days,
+        term.returnAmount,
+        i === 0
+      ]);
     }
   }
 
@@ -100,7 +140,6 @@ async function createRental({ userId, productId }) {
     const fee = Number(product.rental_fee);
     const balance = Number(user.balance);
     const wallet = Number(user.wallet);
-    const reserved = Number(user.reserved_balance || 0);
     if (balance < fee || wallet < fee) return { status: 400, message: "Insufficient balance" };
 
     const start = new Date();
