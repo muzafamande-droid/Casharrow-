@@ -96,7 +96,7 @@
     const container = document.querySelector('main.container');
     if (!container) return;
     const section = document.createElement('section');
-    section.id = 'casharrowMemberProducts';
+    section.id = 'casharrowDynamicMemberProducts';
     section.className = 'ca-rental-section';
     section.innerHTML = `<div class="ca-rental-head"><h2>Rental Products</h2><span>${products.length} products</span></div><div class="ca-rental-grid">${products.map(p => productCard(p, true)).join('')}</div>`;
     const wallet = document.getElementById('userWallet');
