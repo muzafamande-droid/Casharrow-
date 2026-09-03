@@ -86,6 +86,16 @@ async function pollDeposit(depositId) {
   }
 }
 
+async function resumePendingDeposits() {
+  if (!momo.configured()) return;
+  const pending = db.prepare("SELECT id FROM deposits WHERE network='MTN' AND status='pending' ORDER BY id ASC LIMIT 25").all();
+  for (const row of pending) pollDeposit(row.id);
+}
+
+// Provider callbacks are intentionally only a fast path. Polling remains the
+// source of truth because MTN documents that callbacks are sent only once.
+setTimeout(resumePendingDeposits, 3000).unref();
+
 router.post("/mobile-money/deposit", authenticate, async (req, res) => {
   const amount = Number(req.body.amount);
   const network = String(req.body.network || "").trim().toUpperCase();
@@ -148,4 +158,4 @@ router.get("/mobile-money/deposit/:id/status", authenticate, async (req, res) =>
   }
 });
 
-module.exports = { router };
+module.exports = { router, reconcileDeposit };
