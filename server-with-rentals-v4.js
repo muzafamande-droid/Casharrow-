@@ -1,6 +1,7 @@
 const app = require("./server");
 const db = require("./database");
 const pgDb = require("./database-pg");
+const accountPg = require("./account-pg-routes");
 const rental = require("./rental-routes");
 const withdrawal = require("./withdrawal-routes");
 const mobileMoney = require("./mobile-money-sandbox-routes");
@@ -8,10 +9,15 @@ const pgFinancial = require("./pg-financial-routes");
 
 const PORT = process.env.PORT || 3000;
 
-// Retire the legacy SQLite financial endpoints. PostgreSQL is the source of
-// truth for wallet, deposits, withdrawals, and transaction history.
+// Retire legacy SQLite account and financial endpoints. PostgreSQL is now the
+// source of truth for authentication, users, wallet, and money movements.
 if (app._router && Array.isArray(app._router.stack)) {
   const retiredRoutes = new Set([
+    "/api/register",
+    "/api/login",
+    "/api/admin",
+    "/api/admin/dashboard",
+    "/api/admin/users",
     "/api/wallet",
     "/api/transactions",
     "/api/deposits",
@@ -29,8 +35,10 @@ if (app._router && Array.isArray(app._router.stack)) {
   });
 }
 
-// Durable financial API. Mount before the remaining compatibility routes so
-// legacy SQLite handlers cannot capture these endpoints first.
+// Durable PostgreSQL account and financial APIs are mounted before the
+// remaining compatibility routes so retired SQLite handlers cannot capture
+// these endpoints first.
+app.use("/api", accountPg.router);
 app.use("/api", pgFinancial.router);
 app.use("/api", rental.router);
 app.use("/api", withdrawal.router);
