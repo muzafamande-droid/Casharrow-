@@ -9,6 +9,7 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 const sqlite = new Database(process.env.DATABASE_PATH || path.join(__dirname, "casharrow.db"));
 const pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false }) : null;
+let pgSchemaInitialized = false;
 
 sqlite.exec(`
 CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, series TEXT NOT NULL, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, description TEXT, image_url TEXT, rental_fee REAL NOT NULL DEFAULT 0, rental_days INTEGER NOT NULL DEFAULT 0, return_amount REAL, active INTEGER NOT NULL DEFAULT 0, featured INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
@@ -23,7 +24,7 @@ for (const series of ["A", "B", "C", "D"]) {
 }
 
 async function ensurePgSchema() {
-  if (!pool) return;
+  if (!pool || pgSchemaInitialized) return;
   await pool.query(`CREATE TABLE IF NOT EXISTS products (id BIGINT PRIMARY KEY,series TEXT NOT NULL,code TEXT UNIQUE NOT NULL,name TEXT NOT NULL,description TEXT,image_url TEXT,rental_fee DOUBLE PRECISION NOT NULL DEFAULT 0,rental_days BIGINT NOT NULL DEFAULT 0,return_amount DOUBLE PRECISION,active BIGINT NOT NULL DEFAULT 0,featured BIGINT NOT NULL DEFAULT 0,created_at TEXT DEFAULT CURRENT_TIMESTAMP); CREATE TABLE IF NOT EXISTS rentals (id BIGINT PRIMARY KEY,user_id BIGINT NOT NULL,product_id BIGINT NOT NULL,rental_fee DOUBLE PRECISION NOT NULL,rental_days BIGINT NOT NULL,start_at TEXT NOT NULL,end_at TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'active',return_amount DOUBLE PRECISION,completed_at TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);`);
   const pgProducts = (await pool.query("SELECT * FROM products ORDER BY id")).rows;
   if (pgProducts.length === 0) {
@@ -45,6 +46,7 @@ async function ensurePgSchema() {
     restore(rows);
     sqlite.exec("PRAGMA foreign_keys = ON");
   } else await syncRentalsToPostgres();
+  pgSchemaInitialized = true;
 }
 
 async function syncRentalsToPostgres() {
