@@ -93,8 +93,6 @@ test("configured rental deducts wallet balance and cannot complete before its en
   const response = await post("/api/rentals", { productId: product.id }, loginData.token);
   const data = await response.json();
   assert.equal(response.status, 400);
-
-  // The real A1 policy costs UGX 30,000, so the test user must be funded above that amount.
   assert.match(data.message, /insufficient balance/i);
 
   await pgDb.query("UPDATE users SET balance = 50000, wallet = 50000 WHERE id = $1", [user.id]);
@@ -146,7 +144,6 @@ test("first referred rental pays exactly 10 percent commission once", async () =
     const referred = (await pgDb.query("SELECT id, referred_by FROM users WHERE phone = $1", [referredPhone])).rows[0];
     assert.equal(Number(referred.referred_by), Number(referrer.id));
 
-    // Seed the referred member with enough wallet funds to make two A1 rentals.
     await pgDb.query("UPDATE users SET balance = 100000, wallet = 100000 WHERE id = $1", [referred.id]);
     const product = (await pgDb.query("SELECT id FROM products WHERE code = 'A1'")).rows[0];
     assert.ok(product);
@@ -190,6 +187,14 @@ test("first referred rental pays exactly 10 percent commission once", async () =
     );
     assert.equal(Number(rewardCount.rows[0].count), 1);
   } finally {
-    await pgDb.query("DELETE FROM users WHERE phone IN ($1, $2)", [referrerPhone, referredPhone]);
+    const ids = await pgDb.query("SELECT id FROM users WHERE phone IN ($1, $2)", [referrerPhone, referredPhone]);
+    const userIds = ids.rows.map(row => row.id);
+    if (userIds.length) {
+      await pgDb.query("DELETE FROM referral_rewards WHERE referred_user_id = ANY($1::bigint[]) OR referrer_id = ANY($1::bigint[])", [userIds]);
+      await pgDb.query("DELETE FROM team WHERE user_id = ANY($1::bigint[])", [userIds]);
+      await pgDb.query("DELETE FROM transactions WHERE user_id = ANY($1::bigint[])", [userIds]);
+      await pgDb.query("DELETE FROM rentals WHERE user_id = ANY($1::bigint[])", [userIds]);
+      await pgDb.query("DELETE FROM users WHERE id = ANY($1::bigint[])", [userIds]);
+    }
   }
 });
