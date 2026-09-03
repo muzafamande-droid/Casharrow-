@@ -1,7 +1,4 @@
 (() => {
-  const dashboardScript = document.createElement('script');
-  dashboardScript.src = '/member-dashboard.js?v=1';
-  document.head.appendChild(dashboardScript);
   if (window.__casharrowRentalCatalog) return;
   window.__casharrowRentalCatalog = true;
 
