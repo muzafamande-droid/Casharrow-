@@ -116,3 +116,80 @@ test("configured rental deducts wallet balance and cannot complete before its en
   assert.equal(earlyComplete.status, 409);
   assert.match((await earlyComplete.json()).message, /has not ended/i);
 });
+
+test("first referred rental pays exactly 10 percent commission once", async () => {
+  const suffix = Date.now().toString().slice(-6);
+  const referrerPhone = `0711${suffix}`;
+  const referredPhone = `0722${suffix}`;
+  const password = "password";
+
+  try {
+    const referrerRegistration = await post("/api/register", {
+      phone: referrerPhone,
+      name: "Referral Owner",
+      password,
+      confirmPassword: password
+    });
+    assert.equal(referrerRegistration.status, 201);
+    const referrerRegistrationData = await referrerRegistration.json();
+
+    const referredRegistration = await post("/api/register", {
+      phone: referredPhone,
+      name: "First Rental Member",
+      password,
+      confirmPassword: password,
+      referralCode: referrerRegistrationData.referralCode
+    });
+    assert.equal(referredRegistration.status, 201);
+
+    const referrer = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [referrerPhone])).rows[0];
+    const referred = (await pgDb.query("SELECT id, referred_by FROM users WHERE phone = $1", [referredPhone])).rows[0];
+    assert.equal(Number(referred.referred_by), Number(referrer.id));
+
+    // Seed the referred member with enough wallet funds to make two A1 rentals.
+    await pgDb.query("UPDATE users SET balance = 100000, wallet = 100000 WHERE id = $1", [referred.id]);
+    const product = (await pgDb.query("SELECT id FROM products WHERE code = 'A1'")).rows[0];
+    assert.ok(product);
+
+    const { data: loginData } = await login(referredPhone, password);
+    const firstResponse = await post("/api/rentals", { productId: product.id }, loginData.token);
+    const firstData = await firstResponse.json();
+    assert.equal(firstResponse.status, 201);
+    assert.equal(Number(firstData.referralCommission), 3000);
+
+    const referrerAfterFirst = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [referrer.id])).rows[0];
+    assert.equal(Number(referrerAfterFirst.balance), 3000);
+    assert.equal(Number(referrerAfterFirst.wallet), 3000);
+
+    const reward = (await pgDb.query(
+      "SELECT amount, rental_id FROM referral_rewards WHERE referred_user_id = $1",
+      [referred.id]
+    )).rows[0];
+    assert.ok(reward);
+    assert.equal(Number(reward.amount), 3000);
+    assert.equal(Number(reward.rental_id), Number(firstData.rentalId));
+
+    const firstCommissionTransactions = await pgDb.query(
+      "SELECT COUNT(*) AS count FROM transactions WHERE user_id = $1 AND type = 'Referral Commission'",
+      [referrer.id]
+    );
+    assert.equal(Number(firstCommissionTransactions.rows[0].count), 1);
+
+    const secondResponse = await post("/api/rentals", { productId: product.id }, loginData.token);
+    const secondData = await secondResponse.json();
+    assert.equal(secondResponse.status, 201);
+    assert.equal(Number(secondData.referralCommission), 0);
+
+    const referrerAfterSecond = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [referrer.id])).rows[0];
+    assert.equal(Number(referrerAfterSecond.balance), 3000);
+    assert.equal(Number(referrerAfterSecond.wallet), 3000);
+
+    const rewardCount = await pgDb.query(
+      "SELECT COUNT(*) AS count FROM referral_rewards WHERE referred_user_id = $1",
+      [referred.id]
+    );
+    assert.equal(Number(rewardCount.rows[0].count), 1);
+  } finally {
+    await pgDb.query("DELETE FROM users WHERE phone IN ($1, $2)", [referrerPhone, referredPhone]);
+  }
+});
