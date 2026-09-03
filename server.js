@@ -6,7 +6,7 @@ app.response.send = function (body) {
   if (this.req && this.req.path === "/" && typeof body === "string" && body.includes("</body>")) {
     body = body.replace(
       "</body>",
-      '  <script src="/member-dashboard-v2.js?v=4"></script></body>'
+      '  <script src="/member-dashboard-v2.js?v=5"></script><script src="/casharrow-ui-fixes.js?v=1"></script></body>'
     );
   }
   return originalSend.call(this, body);
