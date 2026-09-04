@@ -4,7 +4,16 @@ const test = require("node:test");
 process.env.MTN_ENVIRONMENT = "sandbox";
 delete process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED;
 
-const momo = require("../mobile-money-v3");
+afterEach(() => {
+  process.env.MTN_ENVIRONMENT = "sandbox";
+  delete process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED;
+  delete process.env.MTN_COLLECTION_SUBSCRIPTION_KEY;
+  delete process.env.MTN_API_USER;
+  delete process.env.MTN_API_KEY;
+  delete process.env.MTN_BASE_URL;
+});
+
+const momo = require("../mobile-money-sandbox");
 
 test("normalizes Ugandan MSISDN values", () => {
   assert.equal(momo.normalizeMsisdn("0700123456"), "256700123456");
@@ -14,24 +23,28 @@ test("normalizes Ugandan MSISDN values", () => {
 });
 
 test("sandbox is disabled until explicitly enabled and credentialed", () => {
-  delete process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED;
-  delete process.env.MTN_COLLECTION_SUBSCRIPTION_KEY;
-  delete process.env.MTN_API_USER;
-  delete process.env.MTN_API_KEY;
-  delete process.env.MTN_BASE_URL;
   assert.equal(momo.configured(), false);
 });
 
-test("production mode never enables this sandbox integration", () => {
+test("production mode cannot enable the sandbox integration", () => {
   process.env.MTN_ENVIRONMENT = "production";
   process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED = "true";
   process.env.MTN_COLLECTION_SUBSCRIPTION_KEY = "test-subscription";
   process.env.MTN_API_USER = "test-user";
   process.env.MTN_API_KEY = "test-key";
-  process.env.MTN_BASE_URL = "https://sandbox.momodeveloper.mtn.com";
-  assert.equal(momo.configured(), true);
-  process.env.MTN_ENVIRONMENT = "sandbox";
-  delete process.env.MTN_BASE_URL;
+  process.env.MTN_BASE_URL = momo.SANDBOX_BASE_URL;
+
+  assert.equal(momo.configured(), false);
+});
+
+test("non-sandbox MTN base URLs cannot enable this integration", () => {
+  process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED = "true";
+  process.env.MTN_COLLECTION_SUBSCRIPTION_KEY = "test-subscription";
+  process.env.MTN_API_USER = "test-user";
+  process.env.MTN_API_KEY = "test-key";
+  process.env.MTN_BASE_URL = "https://example.invalid";
+
+  assert.equal(momo.configured(), false);
 });
 
 test("deposit references are deterministic UUID-shaped values", () => {
