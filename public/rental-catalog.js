@@ -8,27 +8,47 @@
   const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   let products=[];
 
-  function applyAveilotBrand(){
+  function replaceBrand(value){return String(value||'').replace(/CashArrow/gi,'AVEILOT');}
+
+  function applyAveilotBrand(root=document.body){
     document.title='AVEILOT · Build. Earn. Grow.';
     const title=document.querySelector('.hero .title');
-    if(title)title.textContent='🚀 AVEILOT';
+    if(title && title.textContent!=='🚀 AVEILOT') title.textContent='🚀 AVEILOT';
     const welcome=document.querySelector('.hero .welcome');
-    if(welcome&&/CashArrow/i.test(welcome.textContent))welcome.textContent=welcome.textContent.replace(/CashArrow/gi,'AVEILOT');
-    document.querySelectorAll('body *:not(script):not(style)').forEach(el=>{
-      el.childNodes.forEach(node=>{
-        if(node.nodeType===Node.TEXT_NODE&&/CashArrow/i.test(node.nodeValue))node.nodeValue=node.nodeValue.replace(/CashArrow/gi,'AVEILOT');
+    if(welcome){const next=replaceBrand(welcome.textContent);if(next!==welcome.textContent)welcome.textContent=next;}
+    if(!root)return;
+    const elements=root.querySelectorAll?.('*:not(script):not(style)')||[];
+    elements.forEach(el=>{
+      el.childNodes?.forEach(node=>{
+        if(node.nodeType===Node.TEXT_NODE && /CashArrow/i.test(node.nodeValue)){
+          const next=replaceBrand(node.nodeValue);if(next!==node.nodeValue)node.nodeValue=next;
+        }
       });
       ['title','aria-label','placeholder'].forEach(attr=>{
-        if(el.hasAttribute?.(attr))el.setAttribute(attr,el.getAttribute(attr).replace(/CashArrow/gi,'AVEILOT'));
+        if(el.hasAttribute?.(attr)){
+          const current=el.getAttribute(attr),next=replaceBrand(current);
+          if(next!==current)el.setAttribute(attr,next);
+        }
       });
     });
   }
 
   function startBrandObserver(){
-    applyAveilotBrand();
+    applyAveilotBrand(document.body);
     if(window.__aveilotBrandObserver)return;
-    window.__aveilotBrandObserver=new MutationObserver(()=>applyAveilotBrand());
-    window.__aveilotBrandObserver.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['title','aria-label','placeholder']});
+    let scheduled=false;
+    const observer=new MutationObserver(mutations=>{
+      if(scheduled)return;
+      const relevant=mutations.some(m=>m.type==='childList'||m.type==='characterData'||m.type==='attributes');
+      if(!relevant)return;
+      scheduled=true;
+      requestAnimationFrame(()=>{
+        scheduled=false;
+        applyAveilotBrand(document.body);
+      });
+    });
+    window.__aveilotBrandObserver=observer;
+    observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['title','aria-label','placeholder']});
   }
 
   function css(){
@@ -77,7 +97,7 @@
     host.innerHTML=`<div class="ca-rental-head"><h2>AVEILOT Machines</h2><p>Choose a series. Each product has its own photo and configuration.</p></div><div class="ca-series-tabs">${Object.entries(SERIES).map(([s,c])=>`<button class="ca-series-tab ${s===open?'active':''}" data-series="${s}">${s} Series<small>${c.days} days · ${groups[s].length} machines</small></button>`).join('')}</div><div class="ca-series-products"><div class="ca-series-panel active"><div class="ca-note">${SERIES[open].label} · ${SERIES[open].days}-day period</div>${list.length?list.map(p=>{const active=Number(p.active)===1||p.active===true;return `<article class="ca-product" data-id="${esc(p.id)}"><div class="ca-product-photo">${photo(p)}</div><div><h3>${esc(p.code||'Machine')}</h3><p>${esc(p.description||'AVEILOT rental product')}</p></div><div class="ca-product-meta"><div class="ca-product-price">${money(p.rental_fee)}</div><div class="ca-product-days">${Number(p.rental_days||0)} days</div><button class="ca-buy" ${active?'':'disabled'}>${active?(token()?'Buy Machine':'Login to Buy'):'Unavailable'}</button></div></article>`}).join(''):'<div class="ca-photo-empty">No products are configured for this series yet.</div>'}</div></div>`;
     host.querySelectorAll('[data-series]').forEach(b=>b.onclick=()=>render(host,b.dataset.series));
     host.querySelectorAll('.ca-product').forEach(row=>{const p=products.find(x=>String(x.id)===String(row.dataset.id));if(!p)return;row.querySelector('.ca-product-photo').onclick=()=>details(p);row.querySelector('h3').onclick=()=>details(p);const b=row.querySelector('.ca-buy');if(b&&!b.disabled)b.onclick=e=>{e.stopPropagation();buy(p,b)};});
-    applyAveilotBrand();
+    applyAveilotBrand(host);
   }
 
   async function openMachines(){
