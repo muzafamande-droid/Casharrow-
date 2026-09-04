@@ -20,6 +20,24 @@ if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET environment variable is
 app.disable("x-powered-by");
 app.use(express.json({ limit: "256kb" }));
 app.use(express.urlencoded({ extended: true, limit: "256kb" }));
+
+app.get("/member.html", (req, res) => {
+  try {
+    const file = path.join(__dirname, "public", "member.html");
+    let html = fs.readFileSync(file, "utf8");
+    // Visible-brand transition only: preserve lowercase technical identifiers
+    // such as casharrowToken, casharrowUser, API routes, and event names.
+    html = html.replaceAll("CashArrow", "AVEILOT");
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    res.type("html").send(html);
+  } catch (error) {
+    console.error("Member dashboard failed to load:", error);
+    res.status(500).send("Unable to load member dashboard");
+  }
+});
+
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 app.get("/api/status", async (req, res) => {
