@@ -1,9 +1,9 @@
 {
   "name": "casharrow",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "server-production.js",
   "scripts": {
-    "start": "node server-with-rentals-v4.js",
+    "start": "node server-production.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js"
   },
   "dependencies": {
