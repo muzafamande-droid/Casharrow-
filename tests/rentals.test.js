@@ -86,6 +86,7 @@ test("configured rental checkout rejects a user without sufficient balance", asy
 
 test("configured rental deducts wallet balance and cannot complete before its end date", async () => {
   const user = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [testPhone])).rows[0];
+  assert.ok(user);
   const product = (await pgDb.query("SELECT id FROM products WHERE code = 'A1'")).rows[0];
   await pgDb.query("UPDATE users SET balance = 5000, wallet = 5000 WHERE id = $1", [user.id]);
 
@@ -116,7 +117,7 @@ test("configured rental deducts wallet balance and cannot complete before its en
 });
 
 test("first referred rental pays exactly 10 percent commission once", async () => {
-  const suffix = Date.now().toString().slice(-6);
+  const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-6);
   const referrerPhone = `0711${suffix}`;
   const referredPhone = `0722${suffix}`;
   const password = "password";
@@ -142,6 +143,8 @@ test("first referred rental pays exactly 10 percent commission once", async () =
 
     const referrer = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [referrerPhone])).rows[0];
     const referred = (await pgDb.query("SELECT id, referred_by FROM users WHERE phone = $1", [referredPhone])).rows[0];
+    assert.ok(referrer);
+    assert.ok(referred);
     assert.equal(Number(referred.referred_by), Number(referrer.id));
 
     await pgDb.query("UPDATE users SET balance = 100000, wallet = 100000 WHERE id = $1", [referred.id]);
