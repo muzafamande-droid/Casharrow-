@@ -8,9 +8,7 @@ process.env.NODE_ENV = "test";
 const pgDb = require("../database-pg");
 const accountPg = require("../account-pg-routes");
 const rental = require("../rental-routes");
-const app = require("../server");
-app.use("/api", accountPg.router);
-app.use("/api", rental.router);
+const app = require("../server-production");
 
 let server;
 let baseUrl;
