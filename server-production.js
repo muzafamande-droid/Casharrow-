@@ -28,6 +28,11 @@ app.get("/member.html", (req, res) => {
     // Visible-brand transition only: preserve lowercase technical identifiers
     // such as casharrowToken, casharrowUser, API routes, and event names.
     html = html.replaceAll("CashArrow", "AVEILOT");
+    // The member page is served through this route, so inject the rental catalog
+    // here as well as on the landing page. This makes Machines available without
+    // depending on a separate page or stale browser script bundle.
+    const scripts = '<script src="/rental-catalog.js?v=photos4"></script>';
+    html = html.replace("</body>", `${scripts}</body>`);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
