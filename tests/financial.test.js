@@ -94,11 +94,31 @@ test("withdrawal reserves funds and rejection releases the reservation", async (
   assert.equal(Number(user.reserved_balance), 0);
 });
 
+test("approved withdrawal requires a payout provider reference", async () => {
+  const withdrawal = await financial.createWithdrawal({ userId, amount: 10000, account: "256700000001", network: "MTN", idempotencyKey: `withdrawal-reference-required-${Date.now()}` });
+
+  await assert.rejects(
+    () => financial.approveWithdrawal(withdrawal.id),
+    /Provider reference is required before approving a withdrawal/
+  );
+
+  const user = (await pgDb.query("SELECT balance, wallet, reserved_balance FROM users WHERE id = $1", [userId])).rows[0];
+  assert.equal(Number(user.balance), 150000);
+  assert.equal(Number(user.wallet), 150000);
+  assert.equal(Number(user.reserved_balance), 10000);
+
+  const current = (await pgDb.query("SELECT status, provider_reference FROM withdrawals WHERE id = $1", [withdrawal.id])).rows[0];
+  assert.equal(current.status, "pending");
+  assert.equal(current.provider_reference, null);
+
+  await financial.rejectWithdrawal(withdrawal.id);
+});
+
 test("approved withdrawal debits balance once and clears reservation", async () => {
   const withdrawal = await financial.createWithdrawal({ userId, amount: 40000, account: "256700000001", network: "MTN", idempotencyKey: `withdrawal-approve-${Date.now()}` });
   const approved = await financial.approveWithdrawal(withdrawal.id, { providerReference: `withdraw-provider-${Date.now()}` });
   assert.equal(approved.status, "approved");
-  assert.equal((await financial.approveWithdrawal(withdrawal.id)).status, "approved");
+  assert.equal((await financial.approveWithdrawal(withdrawal.id, { providerReference: approved.provider_reference })).status, "approved");
 
   const user = (await pgDb.query("SELECT balance, wallet, reserved_balance FROM users WHERE id = $1", [userId])).rows[0];
   assert.equal(Number(user.balance), 110000);
@@ -126,4 +146,19 @@ test("admin money endpoints enforce authentication and admin role", async () => 
   const approvedAgain = await post(`/api/admin/deposits/${deposit.id}/approve`, {}, tokenFor(999999999, "admin"));
   assert.equal(approvedAgain.status, 200);
   assert.equal((await approvedAgain.json()).deposit.status, "approved");
+
+  const withdrawal = await financial.createWithdrawal({ userId, amount: 5000, account: "256700000001", network: "MTN", idempotencyKey: `admin-withdrawal-${Date.now()}` });
+
+  const withdrawalUnauthenticated = await post(`/api/admin/withdrawals/${withdrawal.id}/approve`, {});
+  assert.equal(withdrawalUnauthenticated.status, 401);
+
+  const withdrawalForbidden = await post(`/api/admin/withdrawals/${withdrawal.id}/approve`, { providerReference: "forbidden-ref" }, tokenFor(userId, "user"));
+  assert.equal(withdrawalForbidden.status, 403);
+
+  const missingReference = await post(`/api/admin/withdrawals/${withdrawal.id}/approve`, {}, tokenFor(999999999, "admin"));
+  assert.equal(missingReference.status, 400);
+
+  const withdrawalApproved = await post(`/api/admin/withdrawals/${withdrawal.id}/approve`, { providerReference: `admin-withdraw-provider-${Date.now()}` }, tokenFor(999999999, "admin"));
+  assert.equal(withdrawalApproved.status, 200);
+  assert.equal((await withdrawalApproved.json()).withdrawal.status, "approved");
 });
