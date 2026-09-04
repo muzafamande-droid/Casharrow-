@@ -93,9 +93,12 @@
 
   function showMachinesCatalog(){
     closePanel();
-    window.cashArrowOpenMachines?.();
-    const target=document.getElementById('casharrowRentalCatalog');
-    if(target){target.scrollIntoView({behavior:'smooth',block:'start'});target.style.display='block';}
+    const openCatalog = window.__cashArrowCatalogOpen;
+    if(typeof openCatalog==='function') openCatalog();
+    else {
+      const target=document.getElementById('casharrowRentalCatalog') || document.getElementById('rentalCatalog');
+      if(target){target.style.display='block';target.scrollIntoView({behavior:'smooth',block:'start'});}
+    }
   }
 
   function setupNav(){
