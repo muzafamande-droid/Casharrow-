@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0757e8">
+<title>CashArrow Member</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}body{padding-bottom:86px}.container{max-width:680px;margin:0 auto;padding:18px 14px 100px}.bottom{position:fixed;z-index:9000;left:0;right:0;bottom:0;height:72px;background:#fff;border-top:1px solid #e6ebf2;box-shadow:0 -6px 20px rgba(0,0,0,.08);display:flex;justify-content:space-around;align-items:center}.nav{min-width:64px;text-align:center;color:#718096;font-size:11px;font-weight:700;cursor:pointer;padding:7px 4px;border-radius:12px}.nav div{font-size:21px;line-height:22px;margin-bottom:2px}.nav.active{color:#0757e8;font-weight:900}.member-loading{background:#fff;border-radius:20px;padding:28px;text-align:center;box-shadow:0 8px 24px rgba(17,45,88,.08);margin-top:18px}.member-loading b{display:block;font-size:18px;margin-bottom:7px}.member-loading span{color:#718096;font-size:13px}
+</style>
+</head>
+<body>
+<main class="container">
+  <section class="member-loading" id="memberLoading"><b>🏹 CashArrow</b><span>Opening your account…</span></section>
+</main>
+<nav class="bottom" aria-label="CashArrow navigation">
+  <div class="nav active" data-nav="home"><div>🏠</div>Home</div>
+  <div class="nav" data-nav="machines"><div>🏭</div>Machines</div>
+  <div class="nav" data-nav="wallet"><div>💰</div>Wallet</div>
+  <div class="nav" data-nav="account"><div>👤</div>My Account</div>
+</nav>
+<script>
+if(!localStorage.getItem('casharrowToken')){location.replace('/');}else{
+  const s=document.createElement('script');
+  s.src='/member-dashboard-v2.js?v=12';
+  s.onload=()=>{document.getElementById('memberLoading')?.remove();window.cashArrowStartDashboard?.();};
+  s.onerror=()=>{document.getElementById('memberLoading').innerHTML='<b>Unable to open your account</b><span>Please refresh CashArrow and try again.</span>';};
+  document.body.appendChild(s);
+}
+</script>
+</body>
+</html>
