@@ -5,8 +5,16 @@
   const SERIES = {A:{days:18,label:'Starter series'},B:{days:28,label:'Growth series'},C:{days:100,label:'Extended series'},D:{days:120,label:'Long-term series'}};
   const token=()=>localStorage.getItem('casharrowToken');
   const money=n=>`UGX ${Number(n||0).toLocaleString()}`;
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   let products=[];
+
+  function applyAveilotBrand(){
+    document.title='AVEILOT · Machines';
+    const title=document.querySelector('.hero .title');
+    if(title)title.textContent='🚀 AVEILOT';
+    const welcome=document.querySelector('.hero .welcome');
+    if(welcome&&/CashArrow/i.test(welcome.textContent))welcome.textContent=welcome.textContent.replace(/CashArrow/gi,'AVEILOT');
+  }
 
   function css(){
     if(document.getElementById('casharrowRealPhotoCatalogStyle'))return;
@@ -26,7 +34,7 @@
   function photo(p,large=false){
     const url=String(p.image_url||'').trim();
     if(!url)return `<div class="ca-photo-empty"><strong>📷</strong>Real machine photo not added yet</div>`;
-    return `<img src="${esc(url)}" alt="${esc(p.name||p.code||'CashArrow machine')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="ca-photo-empty" style="display:none"><strong>📷</strong>Photo unavailable</div>`;
+    return `<img src="${esc(url)}" alt="${esc(p.name||p.code||'AVEILOT machine')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="ca-photo-empty" style="display:none"><strong>📷</strong>Photo unavailable</div>`;
   }
 
   async function api(path,opts={}){const r=await fetch(path,{...opts,headers:{...(opts.headers||{}),...(token()?{Authorization:`Bearer ${token()}`}:{})},cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||'Request failed');return d;}
@@ -37,26 +45,27 @@
     const fee=Number(p.rental_fee||0),days=Number(p.rental_days||0),ret=Number(p.return_amount||0);
     if(!confirm(`Buy ${String(p.code||'').toUpperCase()}?\n\nPrice: ${money(fee)}\nPeriod: ${days} days\nReturn credit: ${money(ret)}`))return;
     button.disabled=true;button.textContent='Processing...';
-    try{const d=await api('/api/rentals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:p.id})});alert(d.message||'Machine purchased successfully.');window.loadWallet?.();}
+    try{const d=await api('/api/rentals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:p.id})});alert(d.message||'Machine purchased successfully.');window.loadWallet?.();window.dispatchEvent(new CustomEvent('casharrow:rentalPurchased'));}
     catch(e){alert(e.message||'Unable to purchase machine.');}
     finally{button.disabled=false;button.textContent='Buy Machine';}
   }
 
   function details(p){
     const m=document.createElement('div');m.className='ca-modal';const code=String(p.code||'').toUpperCase();
-    m.innerHTML=`<div class="ca-modal-card"><div class="ca-modal-top"><h3>${esc(code)} · Machine</h3><button class="ca-close">×</button></div><div class="ca-detail-photo">${photo(p,true)}</div><div class="ca-detail-grid"><div class="ca-detail-box"><span>Purchase price</span><b>${money(p.rental_fee)}</b></div><div class="ca-detail-box"><span>Rental period</span><b>${Number(p.rental_days||0)} days</b></div><div class="ca-detail-box"><span>Return credit</span><b>${money(p.return_amount)}</b></div><div class="ca-detail-box"><span>Series</span><b>${esc(p.series||code.charAt(0))} Series</b></div></div><p style="font-size:12px;color:#718096;line-height:1.5;margin-top:12px">The photo shown here is the product image supplied by CashArrow. No illustration is generated as a substitute.</p><div class="ca-modal-actions"><button class="ca-modal-cancel" style="background:#eef4ff;color:#0757e8">Close</button><button class="ca-modal-buy" style="background:#0757e8;color:#fff">${token()?'Buy Machine':'Login to Buy'}</button></div></div>`;
+    m.innerHTML=`<div class="ca-modal-card"><div class="ca-modal-top"><h3>${esc(code)} · Machine</h3><button class="ca-close">×</button></div><div class="ca-detail-photo">${photo(p,true)}</div><div class="ca-detail-grid"><div class="ca-detail-box"><span>Purchase price</span><b>${money(p.rental_fee)}</b></div><div class="ca-detail-box"><span>Rental period</span><b>${Number(p.rental_days||0)} days</b></div><div class="ca-detail-box"><span>Return credit</span><b>${money(p.return_amount)}</b></div><div class="ca-detail-box"><span>Series</span><b>${esc(p.series||code.charAt(0))} Series</b></div></div><p style="font-size:12px;color:#718096;line-height:1.5;margin-top:12px">The photo shown here is the product image supplied by AVEILOT. No illustration is generated as a substitute.</p><div class="ca-modal-actions"><button class="ca-modal-cancel" style="background:#eef4ff;color:#0757e8">Close</button><button class="ca-modal-buy" style="background:#0757e8;color:#fff">${token()?'Buy Machine':'Login to Buy'}</button></div></div>`;
     document.body.appendChild(m);const close=()=>m.remove();m.querySelector('.ca-close').onclick=close;m.querySelector('.ca-modal-cancel').onclick=close;m.querySelector('.ca-modal-buy').onclick=()=>{close();buy(p,m.querySelector('.ca-modal-buy'));};m.onclick=e=>{if(e.target===m)close();};
   }
 
   function render(host,open='A'){
     const groups={A:[],B:[],C:[],D:[]};products.forEach(p=>{const s=String(p.code||'').charAt(0).toUpperCase();if(groups[s])groups[s].push(p);});
     const list=groups[open]||[];
-    host.innerHTML=`<div class="ca-rental-head"><h2>Rental Products</h2><p>Choose a series. Each product has its own photo and configuration.</p></div><div class="ca-series-tabs">${Object.entries(SERIES).map(([s,c])=>`<button class="ca-series-tab ${s===open?'active':''}" data-series="${s}">${s} Series<small>${c.days} days · ${groups[s].length} machines</small></button>`).join('')}</div><div class="ca-series-products"><div class="ca-series-panel active"><div class="ca-note">${SERIES[open].label} · ${SERIES[open].days}-day period</div>${list.length?list.map(p=>{const active=Number(p.active)===1||p.active===true;return `<article class="ca-product" data-id="${esc(p.id)}"><div class="ca-product-photo">${photo(p)}</div><div><h3>${esc(p.code||'Machine')}</h3><p>${esc(p.description||'CashArrow rental product')}</p></div><div class="ca-product-meta"><div class="ca-product-price">${money(p.rental_fee)}</div><div class="ca-product-days">${Number(p.rental_days||0)} days</div><button class="ca-buy" ${active?'':'disabled'}>${active?(token()?'Buy Machine':'Login to Buy'):'Unavailable'}</button></div></article>`}).join(''):'<div class="ca-photo-empty">No products are configured for this series yet.</div>'}</div></div>`;
+    host.innerHTML=`<div class="ca-rental-head"><h2>AVEILOT Machines</h2><p>Choose a series. Each product has its own photo and configuration.</p></div><div class="ca-series-tabs">${Object.entries(SERIES).map(([s,c])=>`<button class="ca-series-tab ${s===open?'active':''}" data-series="${s}">${s} Series<small>${c.days} days · ${groups[s].length} machines</small></button>`).join('')}</div><div class="ca-series-products"><div class="ca-series-panel active"><div class="ca-note">${SERIES[open].label} · ${SERIES[open].days}-day period</div>${list.length?list.map(p=>{const active=Number(p.active)===1||p.active===true;return `<article class="ca-product" data-id="${esc(p.id)}"><div class="ca-product-photo">${photo(p)}</div><div><h3>${esc(p.code||'Machine')}</h3><p>${esc(p.description||'AVEILOT rental product')}</p></div><div class="ca-product-meta"><div class="ca-product-price">${money(p.rental_fee)}</div><div class="ca-product-days">${Number(p.rental_days||0)} days</div><button class="ca-buy" ${active?'':'disabled'}>${active?(token()?'Buy Machine':'Login to Buy'):'Unavailable'}</button></div></article>`}).join(''):'<div class="ca-photo-empty">No products are configured for this series yet.</div>'}</div></div>`;
     host.querySelectorAll('[data-series]').forEach(b=>b.onclick=()=>render(host,b.dataset.series));
     host.querySelectorAll('.ca-product').forEach(row=>{const p=products.find(x=>String(x.id)===String(row.dataset.id));if(!p)return;row.querySelector('.ca-product-photo').onclick=()=>details(p);row.querySelector('h3').onclick=()=>details(p);const b=row.querySelector('.ca-buy');if(b&&!b.disabled)b.onclick=e=>{e.stopPropagation();buy(p,b)};});
   }
 
   async function openMachines(){
+    applyAveilotBrand();
     css();
     let host=document.getElementById('casharrowRentalCatalog');
     if(!host){host=document.createElement('section');host.id='casharrowRentalCatalog';host.className='ca-rental-catalog';document.querySelector('main.container')?.appendChild(host);}
