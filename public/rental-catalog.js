@@ -72,7 +72,19 @@
     return `<img src="${esc(url)}" alt="${esc(p.name||p.code||'AVEILOT machine')}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="ca-photo-empty" style="display:none"><strong>📷</strong>Photo unavailable</div>`;
   }
 
-  async function api(path,opts={}){const r=await fetch(path,{...opts,headers:{...(opts.headers||{}),...(token()?{Authorization:`Bearer ${token()}`}:{})},cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||'Request failed');return d;}
+  async function api(path,opts={}){
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),12000);
+    try{
+      const r=await fetch(path,{...opts,signal:controller.signal,headers:{...(opts.headers||{}),...(token()?{Authorization:`Bearer ${token()}`}:{})},cache:'no-store'});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok)throw Error(d.message||`Request failed (${r.status})`);
+      return d;
+    }catch(e){
+      if(e?.name==='AbortError')throw Error('Machine catalog timed out. Please try again.');
+      throw e;
+    }finally{clearTimeout(timeout);}
+  }
 
   async function buy(p,button){
     if(!token()){window.openModal?.('login');return;}
