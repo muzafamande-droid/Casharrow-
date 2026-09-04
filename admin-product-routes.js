@@ -19,6 +19,18 @@ function requireAdmin(req, res, next) {
   }
 }
 
+function parseBoolean(value, defaultValue) {
+  if (value === undefined) return defaultValue;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") return true;
+    if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "off" || normalized === "") return false;
+  }
+  return null;
+}
+
 function cleanProduct(body) {
   const series = String(body.series || "").trim().toUpperCase();
   const code = String(body.code || "").trim().toUpperCase();
@@ -28,14 +40,16 @@ function cleanProduct(body) {
   const fee = Number(body.rental_fee);
   const days = Number(body.rental_days);
   const returnAmount = Number(body.return_amount);
-  const active = body.active === undefined ? true : Boolean(body.active);
-  const featured = body.featured === undefined ? false : Boolean(body.featured);
+  const active = parseBoolean(body.active, true);
+  const featured = parseBoolean(body.featured, false);
   if (!/^[A-Z]$/.test(series)) return { error: "Series must be one letter" };
   if (!/^[A-Z][0-9]+$/.test(code)) return { error: "Invalid product code" };
   if (!name) return { error: "Product name is required" };
   if (!Number.isFinite(fee) || fee <= 0) return { error: "Rental fee must be greater than zero" };
   if (!Number.isInteger(days) || days <= 0) return { error: "Rental days must be a positive integer" };
   if (!Number.isFinite(returnAmount) || returnAmount < 0) return { error: "Return amount must be zero or greater" };
+  if (active === null) return { error: "Invalid active value" };
+  if (featured === null) return { error: "Invalid featured value" };
   return { series, code, name, description, imageUrl: imageUrl || null, fee, days, returnAmount, active, featured };
 }
 
