@@ -87,6 +87,7 @@ async function ensurePgSchema() {
     CREATE INDEX IF NOT EXISTS idx_rentals_status_end ON rentals(status, end_at);
   `);
 
+  // Seed only missing catalog records; admin-edited products are preserved.
   for (const [series, terms] of Object.entries(RENTAL_POLICY)) {
     for (let i = 0; i < terms.length; i += 1) {
       const code = `${series}${i + 1}`;
@@ -94,15 +95,7 @@ async function ensurePgSchema() {
       await db.query(`
         INSERT INTO products (id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured)
         VALUES (nextval('casharrow_products_id_seq'), $1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9)
-        ON CONFLICT (code) DO UPDATE SET
-          series = EXCLUDED.series,
-          name = EXCLUDED.name,
-          description = EXCLUDED.description,
-          rental_fee = EXCLUDED.rental_fee,
-          rental_days = EXCLUDED.rental_days,
-          return_amount = EXCLUDED.return_amount,
-          active = TRUE,
-          featured = EXCLUDED.featured
+        ON CONFLICT (code) DO NOTHING
       `, [
         series,
         code,
