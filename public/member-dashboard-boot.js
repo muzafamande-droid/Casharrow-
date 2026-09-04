@@ -10,7 +10,7 @@
     }
     if (!document.getElementById('casharrowCompactHome')) {
       const script = document.createElement('script');
-      script.src = '/member-dashboard-v2.js?v=11';
+      script.src = '/member-dashboard-v2.js?v=12';
       script.onload = () => {
         if (hasToken()) window.cashArrowStartDashboard?.();
       };
