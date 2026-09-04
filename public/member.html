@@ -6,27 +6,50 @@
 <meta name="theme-color" content="#0757e8">
 <title>CashArrow Member</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}body{padding-bottom:86px}.container{max-width:680px;margin:0 auto;padding:18px 14px 100px}.bottom{position:fixed;z-index:9000;left:0;right:0;bottom:0;height:72px;background:#fff;border-top:1px solid #e6ebf2;box-shadow:0 -6px 20px rgba(0,0,0,.08);display:flex;justify-content:space-around;align-items:center}.nav{min-width:64px;text-align:center;color:#718096;font-size:11px;font-weight:700;cursor:pointer;padding:7px 4px;border-radius:12px}.nav div{font-size:21px;line-height:22px;margin-bottom:2px}.nav.active{color:#0757e8;font-weight:900}.member-loading{background:#fff;border-radius:20px;padding:28px;text-align:center;box-shadow:0 8px 24px rgba(17,45,88,.08);margin-top:18px}.member-loading b{display:block;font-size:18px;margin-bottom:7px}.member-loading span{color:#718096;font-size:13px}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}body{padding-bottom:86px}.container{max-width:680px;margin:0 auto;padding:16px 14px 100px}.hero{background:linear-gradient(145deg,#0757e8,#13a4ff);border-radius:24px;padding:20px;color:#fff;box-shadow:0 14px 35px rgba(7,87,232,.22)}.title{font-size:25px;font-weight:900}.welcome{font-size:13px;opacity:.86;margin-top:4px}.label{font-size:12px;opacity:.82;margin-top:22px}.balance{font-size:34px;font-weight:900;margin:3px 0 16px}.quick{display:grid;grid-template-columns:1fr 1fr;gap:9px}.quick button{border:0;border-radius:13px;padding:13px;font-weight:900;min-height:48px;background:#fff;color:#0757e8}.quick .dark{background:#0b4dc8;color:#fff}.panel{display:none;background:#fff;border-radius:20px;padding:17px;margin-top:14px;border:1px solid #e2e9f3;box-shadow:0 8px 24px rgba(17,45,88,.08)}.panel.open{display:block}.panel h2{margin:0 0 12px;font-size:21px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:#f7f9fd;border:1px solid #e2e9f3;border-radius:15px;padding:14px}.card span{display:block;color:#718096;font-size:11px}.card b{display:block;margin-top:5px;font-size:16px}.info{font-size:13px;color:#667085;line-height:1.55}.action{width:100%;border:0;border-radius:12px;padding:13px;margin-top:10px;background:#0757e8;color:#fff;font-weight:900}.bottom{position:fixed;z-index:9000;left:0;right:0;bottom:0;height:72px;background:#fff;border-top:1px solid #e6ebf2;box-shadow:0 -6px 20px rgba(0,0,0,.08);display:flex;justify-content:space-around;align-items:center}.nav{min-width:64px;text-align:center;color:#718096;font-size:11px;font-weight:700;cursor:pointer;padding:7px 4px;border-radius:12px}.nav div{font-size:21px;line-height:22px;margin-bottom:2px}.nav.active{color:#0757e8;font-weight:900}.loading{text-align:center;padding:20px;color:#718096}.ca-rental-catalog{margin-top:14px!important}@media(max-width:480px){.hero{border-radius:20px;padding:17px}.balance{font-size:30px}}
 </style>
 </head>
 <body>
-<main class="container">
-  <section class="member-loading" id="memberLoading"><b>🏹 CashArrow</b><span>Opening your account…</span></section>
+<main class="container" id="app">
+<section class="hero">
+<div class="title">🏹 CashArrow</div>
+<div class="welcome" id="welcome">Welcome back</div>
+<div class="label">Available Balance</div>
+<div class="balance" id="balance">UGX 0</div>
+<div class="quick"><button id="depositBtn">💳 Deposit</button><button class="dark" id="withdrawBtn">📤 Withdraw</button></div>
+</section>
+<section class="panel" id="homePanel" style="display:block"><h2>🏠 Home</h2><div class="cards"><div class="card"><span>Wallet</span><b id="homeBalance">UGX 0</b></div><div class="card"><span>Machines</span><b id="machineCount">Loading…</b></div></div><p class="info" style="margin-top:12px">Your CashArrow member account is ready. Use the navigation below to view machines, wallet information and your account.</p></section>
+<section class="panel" id="walletPanel"><h2>💰 Wallet</h2><div class="card"><span>Available balance</span><b id="walletBalance">UGX 0</b></div><p class="info">Your wallet balance is loaded directly from your CashArrow account.</p><button class="action" id="walletDeposit">💳 Deposit Funds</button><button class="action" id="walletWithdraw">📤 Withdraw Funds</button></section>
+<section class="panel" id="accountPanel"><h2>👤 My Account</h2><div class="cards"><div class="card"><span>Name</span><b id="accountName">Member</b></div><div class="card"><span>Balance</span><b id="accountBalance">UGX 0</b></div></div><button class="action" id="logoutBtn">Log out</button></section>
+<section id="machinesHost"></section>
 </main>
 <nav class="bottom" aria-label="CashArrow navigation">
-  <div class="nav active" data-nav="home"><div>🏠</div>Home</div>
-  <div class="nav" data-nav="machines"><div>🏭</div>Machines</div>
-  <div class="nav" data-nav="wallet"><div>💰</div>Wallet</div>
-  <div class="nav" data-nav="account"><div>👤</div>My Account</div>
+<div class="nav active" data-nav="home"><div>🏠</div>Home</div>
+<div class="nav" data-nav="machines"><div>🏭</div>Machines</div>
+<div class="nav" data-nav="wallet"><div>💰</div>Wallet</div>
+<div class="nav" data-nav="account"><div>👤</div>My Account</div>
 </nav>
 <script>
-if(!localStorage.getItem('casharrowToken')){location.replace('/');}else{
-  const s=document.createElement('script');
-  s.src='/member-dashboard-v2.js?v=12';
-  s.onload=()=>{document.getElementById('memberLoading')?.remove();window.cashArrowStartDashboard?.();};
-  s.onerror=()=>{document.getElementById('memberLoading').innerHTML='<b>Unable to open your account</b><span>Please refresh CashArrow and try again.</span>';};
-  document.body.appendChild(s);
-}
+(function(){
+const token=localStorage.getItem('casharrowToken');
+if(!token){location.replace('/');return;}
+const user=(()=>{try{return JSON.parse(localStorage.getItem('casharrowUser')||'{}')}catch{return {}}})();
+const money=n=>'UGX '+Number(n||0).toLocaleString();
+const $=id=>document.getElementById(id);
+$('welcome').textContent='Welcome back, '+(user.name||user.phone||'Member');
+$('accountName').textContent=user.name||user.phone||'Member';
+async function api(path,opts={}){const r=await fetch(path,{...opts,headers:{...(opts.headers||{}),Authorization:'Bearer '+token},cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||'Request failed');return d;}
+async function balance(){try{const d=await api('/api/wallet');const n=Number(d.wallet?.balance??d.balance??d.walletBalance??0);$('balance').textContent=money(n);$('homeBalance').textContent=money(n);$('walletBalance').textContent=money(n);$('accountBalance').textContent=money(n);}catch(e){console.error(e)}}
+function panels(active){['homePanel','walletPanel','accountPanel'].forEach(id=>$(id).classList.remove('open'));if(active)$(active).classList.add('open');$('machinesHost').style.display=active==='machines'? 'block':'none';}
+function nav(name){document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x.dataset.nav===name));if(name==='home')panels('homePanel');if(name==='wallet')panels('walletPanel');if(name==='account')panels('accountPanel');if(name==='machines'){panels('machines');loadMachines();}window.scrollTo({top:0,behavior:'smooth'});}
+document.querySelectorAll('.nav').forEach(n=>n.onclick=()=>nav(n.dataset.nav));
+async function loadMachines(){const host=$('machinesHost');host.style.display='block';if(host.dataset.loaded==='1'){host.scrollIntoView({behavior:'smooth',block:'start'});return;}host.innerHTML='<section class="panel open"><div class="loading">🏭 Loading machines…</div></section>';try{const s=document.createElement('script');s.src='/rental-catalog.js?v=photos4';s.onload=async()=>{if(typeof window.cashArrowOpenMachines==='function'){await window.cashArrowOpenMachines();host.dataset.loaded='1';}else host.innerHTML='<section class="panel open"><div class="loading">Machine catalog could not be opened.</div></section>';};s.onerror=()=>{host.innerHTML='<section class="panel open"><div class="loading">Unable to load machines. Please try again.</div></section>';};document.body.appendChild(s);}catch(e){host.innerHTML='<section class="panel open"><div class="loading">'+e.message+'</div></section>';}host.scrollIntoView({behavior:'smooth',block:'start'});}
+$('machineCount').textContent='View catalog';
+$('depositBtn').onclick=$('walletDeposit').onclick=()=>nav('wallet');
+$('withdrawBtn').onclick=$('walletWithdraw').onclick=()=>nav('wallet');
+$('logoutBtn').onclick=()=>{localStorage.removeItem('casharrowToken');localStorage.removeItem('casharrowUser');location.replace('/');};
+balance();
+})();
 </script>
 </body>
 </html>
