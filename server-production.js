@@ -43,7 +43,7 @@ app.use("/api", adminProducts.router);
 app.get("/", (req, res) => {
   const file = path.join(__dirname, "public", "index.html");
   let html = fs.readFileSync(file, "utf8");
-  const scripts = '<script src="/member-dashboard-v2.js?v=8"></script><script src="/casharrow-ui-fixes.js?v=3"></script><script src="/rental-catalog.js?v=photos3"></script>';
+  const scripts = '<script src="/member-dashboard-v2.js?v=9"></script><script src="/member-dashboard-boot.js?v=1"></script><script src="/casharrow-ui-fixes.js?v=3"></script><script src="/rental-catalog.js?v=photos3"></script>';
   html = html.replace("</body>", `${scripts}</body>`);
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.set("Pragma", "no-cache");
