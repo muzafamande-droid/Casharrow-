@@ -53,18 +53,21 @@ async function createDeposit({ userId, amount, network, account, providerReferen
 
     if (idempotencyKey) {
       const existing = await client.query(
-        "SELECT * FROM deposits WHERE idempotency_key = $1 LIMIT 1",
-        [idempotencyKey]
+        "SELECT * FROM deposits WHERE idempotency_key = $1 AND user_id = $2 LIMIT 1",
+        [idempotencyKey, userId]
       );
       if (existing.rowCount) return existing.rows[0];
     }
 
     if (providerReference) {
       const existing = await client.query(
-        "SELECT * FROM deposits WHERE provider_reference = $1 LIMIT 1",
+        "SELECT id, user_id FROM deposits WHERE provider_reference = $1 LIMIT 1",
         [providerReference]
       );
-      if (existing.rowCount) return existing.rows[0];
+      if (existing.rowCount) {
+        if (Number(existing.rows[0].user_id) === Number(userId)) return existing.rows[0];
+        throw new Error("Provider reference is already linked to another deposit");
+      }
     }
 
     const result = await client.query(
@@ -89,6 +92,14 @@ async function approveDeposit(depositId, { providerReference = null } = {}) {
 
     if (providerReference && deposit.provider_reference && providerReference !== deposit.provider_reference) {
       throw new Error("Provider reference does not match deposit");
+    }
+
+    if (providerReference) {
+      const duplicate = await client.query(
+        "SELECT id FROM deposits WHERE provider_reference = $1 AND id <> $2 LIMIT 1",
+        [providerReference, depositId]
+      );
+      if (duplicate.rowCount) throw new Error("Provider reference is already linked to another deposit");
     }
 
     await creditWallet(client, deposit.user_id, deposit.amount, "Deposit", providerReference || deposit.provider_reference);
@@ -126,8 +137,8 @@ async function createWithdrawal({ userId, amount, account, network = null, idemp
 
     if (idempotencyKey) {
       const existing = await client.query(
-        "SELECT * FROM withdrawals WHERE idempotency_key = $1 LIMIT 1",
-        [idempotencyKey]
+        "SELECT * FROM withdrawals WHERE idempotency_key = $1 AND user_id = $2 LIMIT 1",
+        [idempotencyKey, userId]
       );
       if (existing.rowCount) return existing.rows[0];
     }
