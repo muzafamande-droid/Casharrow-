@@ -153,12 +153,24 @@ async function createWithdrawal({ userId, amount, account, network = null, idemp
 }
 
 async function approveWithdrawal(withdrawalId, { providerReference = null } = {}) {
+  const payoutReference = String(providerReference || "").trim();
+  if (!payoutReference) throw new Error("Provider reference is required before approving a withdrawal");
+
   return db.transaction(async client => {
     const result = await client.query("SELECT * FROM withdrawals WHERE id = $1 FOR UPDATE", [withdrawalId]);
     const withdrawal = result.rows[0];
     if (!withdrawal) throw new Error("Withdrawal not found");
     if (withdrawal.status === "approved") return withdrawal;
     if (withdrawal.status !== "pending") throw new Error(`Withdrawal is already ${withdrawal.status}`);
+    if (withdrawal.provider_reference && withdrawal.provider_reference !== payoutReference) {
+      throw new Error("Provider reference does not match withdrawal");
+    }
+
+    const duplicate = await client.query(
+      "SELECT id FROM withdrawals WHERE provider_reference = $1 AND id <> $2 LIMIT 1",
+      [payoutReference, withdrawalId]
+    );
+    if (duplicate.rowCount) throw new Error("Provider reference is already linked to another withdrawal");
 
     const user = await getUser(client, withdrawal.user_id, true);
     if (!user) throw new Error("User not found");
@@ -178,14 +190,14 @@ async function approveWithdrawal(withdrawalId, { providerReference = null } = {}
       [withdrawal.amount, withdrawal.user_id]
     );
 
-    await recordTransaction(client, withdrawal.user_id, "Withdrawal", -Number(withdrawal.amount), providerReference || withdrawal.provider_reference);
+    await recordTransaction(client, withdrawal.user_id, "Withdrawal", -Number(withdrawal.amount), payoutReference);
 
     const updated = await client.query(
       `UPDATE withdrawals
-       SET status = 'approved', approved_at = NOW(), provider_reference = COALESCE($2, provider_reference)
+       SET status = 'approved', approved_at = NOW(), provider_reference = $2
        WHERE id = $1 AND status = 'pending'
        RETURNING *`,
-      [withdrawalId, providerReference]
+      [withdrawalId, payoutReference]
     );
     return updated.rows[0];
   });
