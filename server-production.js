@@ -43,7 +43,7 @@ app.use("/api", adminProducts.router);
 app.get("/", (req, res) => {
   const file = path.join(__dirname, "public", "index.html");
   let html = fs.readFileSync(file, "utf8");
-  const scripts = '<script src="/member-dashboard-v2.js?v=5"></script><script src="/casharrow-ui-fixes.js?v=1"></script><script src="/rental-catalog.js?v=final5"></script><script src="/casharrow-machine-designs.js?v=2"></script>';
+  const scripts = '<script src="/member-dashboard-v2.js?v=6"></script><script src="/casharrow-ui-fixes.js?v=2"></script><script src="/rental-catalog.js?v=photos1"></script>';
   html = html.replace("</body>", `${scripts}</body>`);
   res.type("html").send(html);
 });
