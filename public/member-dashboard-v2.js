@@ -1,22 +1,111 @@
 (() => {
   if (window.__casharrowMemberDashboardV2) return;
   window.__casharrowMemberDashboardV2 = true;
-  const token=()=>localStorage.getItem('casharrowToken');
-  const user=()=>{try{return JSON.parse(localStorage.getItem('casharrowUser')||'{}')}catch{return{}}};
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const style=document.createElement('style');style.textContent=`
-    body{background:#06142f!important;color:#fff!important}.container{max-width:560px!important;padding:10px 10px 88px!important}.ca2{display:none}
-    .ca2hero{position:relative;overflow:hidden;background:linear-gradient(145deg,#0d2b61,#0757e8);border-radius:18px;padding:15px}.ca2hero:before{content:'⚡  ⚙  ◇  ⚡';position:absolute;right:-5px;top:5px;color:#fff;opacity:.12;font-size:31px;letter-spacing:8px;animation:caHeroFloat 4s ease-in-out infinite}.ca2hero:after{content:'';position:absolute;left:-30%;bottom:0;width:45%;height:2px;background:#79b7ff66;animation:caHeroSweep 5s linear infinite}@keyframes caHeroFloat{50%{transform:translateY(6px) rotate(2deg)}}@keyframes caHeroSweep{to{left:110%}}
-    .ca2title{font-size:23px;font-weight:900;letter-spacing:-.4px;position:relative;z-index:1}.ca2subtitle{font-size:10px;color:#c9dcfa;margin-top:3px;position:relative;z-index:1}.ca2bal{font-size:27px;font-weight:900;margin:8px 0 11px}.ca2topgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.ca2topgrid button,.ca2lowergrid button{min-height:42px;border:1px solid #8ab4ff22;border-radius:11px;background:#102b58;color:#fff;font-weight:800;font-size:11px;padding:7px 5px}.ca2topgrid button.p{background:#0757e8}.ca2lowergrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}.ca2lowergrid button{min-height:39px;background:#0d254c}.ca2panel{display:none;margin-top:9px;background:#0b2147;border:1px solid #78aaff2e;border-radius:16px;padding:11px}.ca2panel h3{margin:0 0 9px;font-size:15px}.ca2back{float:right;background:#17345f;color:#dce9ff;border:0;border-radius:8px;padding:5px 8px;font-size:11px}.ca2row{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff12;font-size:11px}.ca2primary{background:#0757e8;color:#fff;border:0;border-radius:9px;padding:8px 10px;font-weight:800;font-size:11px}.ca2rental{display:none}.ca2rental.open{display:block}.ca2rental .ca-rental-catalog{margin-top:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;border-radius:0!important}.ca2rental .ca-rental-head h2{font-size:22px!important;color:#fff!important}.ca2rental .ca-rental-head p{font-size:12px!important;color:#9fb4d5!important}.ca2rental .ca-series-tabs{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:7px!important}.ca2rental .ca-series-tab{min-width:0!important;min-height:50px!important;border-radius:11px!important;padding:10px 7px!important;background:#102b58!important;color:#dce9ff!important;border:1px solid #8ab4ff22!important;font-size:12px!important}.ca2rental .ca-series-tab.active{background:#0757e8!important;color:#fff!important}.ca2rental .ca-series-panel{background:#071a38!important;color:#fff!important;border-radius:13px!important;padding:8px!important}.ca2rental .ca-product{display:grid!important;grid-template-columns:104px 1fr!important;gap:10px!important;align-items:center!important;padding:12px 2px!important;border-bottom:1px solid #ffffff12!important}.ca2rental .ca-product-art{width:104px!important;height:78px!important;border-radius:13px!important;overflow:hidden!important}.ca2rental .ca-product h3{font-size:18px!important;color:#fff!important}.ca2rental .ca-product p{font-size:12px!important;line-height:1.45!important;color:#9fb4d5!important}.ca2rental .ca-product .ca-buy{grid-column:1 / -1!important;width:100%!important;padding:10px 12px!important;background:#0757e8!important;color:#fff!important;border:0!important;border-radius:10px!important;font-size:15px!important;min-height:47px!important;font-weight:900!important}.ca2rental .ca-note{font-size:11px!important;color:#9fb4d5!important;margin:2px 0 7px!important}.ca2allnote{font-size:11px;color:#9fb4d5;margin:0 0 7px}@media(min-width:520px){.ca2rental .ca-series-tabs{grid-template-columns:repeat(4,1fr)!important}.ca2rental .ca-product{grid-template-columns:145px 1fr auto!important}.ca2rental .ca-product-art{width:145px!important;height:105px!important}.ca2rental .ca-product .ca-buy{grid-column:auto!important;width:auto!important;min-width:92px}}
-  `;document.head.appendChild(style);
-  let home,panel,cat;
-  function hideLegacy(){['rentalCatalog','casharrowStaticRentals','casharrowDynamicMemberProducts','casharrowMemberProducts','memberTools','todayTasks','rewardsSection','teamSection','withdrawSection','transactions','casharrowDeposit','userWallet'].forEach(id=>{const n=document.getElementById(id);if(n)n.style.display='none'});document.querySelectorAll('main.container>.cardbox').forEach(n=>n.style.display='none')}
-  function balance(){fetch('/api/wallet',{headers:{Authorization:'Bearer '+token()},cache:'no-store'}).then(r=>r.json()).then(d=>{const n=Number(d.balance??d.wallet?.balance??d.walletBalance??0),x=document.getElementById('ca2bal');if(x)x.textContent='UGX '+n.toLocaleString()}).catch(()=>{})}
-  function closeOpenSections(){['casharrowDeposit','withdrawSection','transactions','todayTasks','rewardsSection','teamSection','memberTools','rentalCatalog','casharrowStaticRentals','casharrowDynamicMemberProducts','casharrowMemberProducts'].forEach(id=>{const n=document.getElementById(id);if(n){n.style.display='none';n.removeAttribute('data-cash-arrow-open')}});if(panel){panel.style.display='none';panel.innerHTML=''}document.querySelectorAll('.ca2rental').forEach(n=>n.remove())}
-  function show(title,html=''){closeOpenSections();panel.style.display='block';panel.innerHTML='<button class="ca2back">Home</button><h3>'+title+'</h3>'+html;panel.querySelector('.ca2back').onclick=()=>closeOpenSections()}
-  async function api(path,opts={}){const r=await fetch(path,{...opts,headers:{...(opts.headers||{}),Authorization:'Bearer '+token()}}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||'Request failed');return d}
-  function setupAllTab(){if(!cat)return;const tabs=cat.querySelector('.ca-series-tabs'),panels=cat.querySelector('.ca-series-products');if(!tabs||!panels||tabs.querySelector('[data-ca-all]'))return;const all=document.createElement('button');all.className='ca-series-tab';all.dataset.caAll='1';all.innerHTML='All<small>20 products</small>';tabs.insertBefore(all,tabs.firstChild);all.onclick=()=>{tabs.querySelectorAll('.ca-series-tab').forEach(x=>x.classList.remove('active'));all.classList.add('active');panels.querySelectorAll('.ca-series-panel').forEach(x=>x.classList.remove('active'));const rows=[];panels.querySelectorAll('.ca-product').forEach(row=>{const m=(row.querySelector('p')?.textContent||'').match(/Buy:\s*UGX\s*([\d,]+)/i);rows.push({row,fee:m?Number(m[1].replace(/,/g,'')):0})});rows.sort((a,b)=>a.fee-b.fee);let allPanel=panels.querySelector('.ca-all-panel');if(!allPanel){allPanel=document.createElement('div');allPanel.className='ca-series-panel ca-all-panel';panels.appendChild(allPanel)}allPanel.innerHTML='<div class="ca2allnote">Machines arranged by price · choose any available machine.</div>';rows.forEach(({row})=>{const copy=row.cloneNode(true);const old=copy.querySelector('button');if(old){const original=Array.from(panels.querySelectorAll('.ca-product button')).find(b=>b.textContent===old.textContent);old.onclick=original?.onclick||null}allPanel.appendChild(copy)});allPanel.classList.add('active')};tabs.querySelectorAll('.ca-series-tab:not([data-ca-all])').forEach(tab=>tab.addEventListener('click',()=>all.classList.remove('active')))}
-  async function feature(k){if(k==='account'){closeOpenSections();window.handleAccountAction?.();return}if(k==='deposit'){show('💳 Deposit');const n=document.getElementById('casharrowDeposit');window.openDeposit?.();if(n){panel.appendChild(n);n.style.display='block';n.dataset.cashArrowOpen='1'}return}if(k==='withdraw'){show('📤 Withdraw');const n=document.getElementById('withdrawSection');window.openWithdraw?.();if(n){panel.appendChild(n);n.style.display='block';n.dataset.cashArrowOpen='1'}return}if(k==='rentals'){show('🏭 CashArrow Machines');cat=document.getElementById('casharrowRentalCatalog');if(cat){const box=document.createElement('div');box.className='ca2rental open';panel.appendChild(box);box.appendChild(cat);cat.style.display='block';setupAllTab()}return}if(k==='transactions'){show('🧾 Transactions','<div id="ca2body">Loading...</div>');try{const d=await api('/api/transactions'),a=d.transactions||d.data||[];document.getElementById('ca2body').innerHTML=a.length?a.map(x=>`<div class="ca2row"><span>${esc(x.description||x.type||'Transaction')}</span><b>UGX ${Number(x.amount||0).toLocaleString()}</b></div>`).join(''):'No transactions yet.'}catch{document.getElementById('ca2body').textContent='Unable to load transactions.'}return}if(k==='tasks'){show('🎯 Tasks','<div id="ca2body">Loading...</div>');try{const d=await api('/api/tasks'),a=d.tasks||[];document.getElementById('ca2body').innerHTML=a.map(x=>`<div class="ca2row"><span>${esc(x.title||x.name)}<br>UGX ${Number(x.reward||x.reward_amount||0).toLocaleString()}</span>${x.claimed?'✅':`<button class="ca2primary" data-id="${x.id}">Claim</button>`}</div>`).join('')||'No tasks available.';panel.querySelectorAll('[data-id]').forEach(b=>b.onclick=async()=>{try{await api('/api/tasks/'+b.dataset.id+'/claim',{method:'POST'});balance();feature('tasks')}catch(x){alert(x.message)}})}catch{document.getElementById('ca2body').textContent='Unable to load tasks.'}return}if(k==='rewards'){show('🎁 Rewards','<div id="ca2body">Loading...</div>');try{const d=await api('/api/rewards'),a=d.rewards||[];document.getElementById('ca2body').innerHTML=a.map(x=>`<div class="ca2row"><span>${esc(x.title||x.name)}<br>UGX ${Number(x.amount||x.reward||0).toLocaleString()}</span>${x.claimed?'✅':`<button class="ca2primary" data-id="${x.id}">Claim</button>`}</div>`).join('')||'No rewards available.';panel.querySelectorAll('[data-id]').forEach(b=>b.onclick=async()=>{try{await api('/api/rewards/'+b.dataset.id+'/claim',{method:'POST'});balance();feature('rewards')}catch(x){alert(x.message)}})}catch{document.getElementById('ca2body').textContent='Unable to load rewards.'}return}if(k==='team'){show('👥 My Team','<div id="ca2body">Loading...</div>');try{const d=await api('/api/team'),a=d.team||d.members||[];document.getElementById('ca2body').innerHTML='<div class="ca2row"><span>Total team members</span><b>'+a.length+'</b></div>'+(a.map(x=>`<div class="ca2row"><span>${esc(x.name||x.phone||'Member')}</span><span>UGX ${Number(x.earnings||x.total_earnings||0).toLocaleString()}</span></div>`).join('')||'<p>No team members yet.</p>')}catch{document.getElementById('ca2body').textContent='Unable to load team.'}return}if(k==='invite'){const x=user(),c=x.referralCode||x.referral_code||'',l=c?location.origin+'/?ref='+encodeURIComponent(c):'';show('👥 Invite Friends',`<div class="ca2row"><span>Referral code</span><b>${esc(c||'Loading...')}</b></div><p>Share your referral link.</p><button class="ca2primary" id="ca2copy">Copy invite link</button>`);panel.querySelector('#ca2copy').onclick=async()=>{try{await navigator.clipboard.writeText(l);alert('Copied!')}catch{prompt('Copy link:',l)}}}}
-  function start(){if(!token()||home)return;const main=document.querySelector('main.container');if(!main)return;hideLegacy();home=document.createElement('section');home.id='casharrowCompactHome';home.className='ca2';home.innerHTML=`<div class="ca2hero"><div class="ca2title">🏭 CashArrow Machines</div><div class="ca2subtitle">Industrial machine collection · ${esc(user().name||user().phone||'Member')}</div><div style="color:#bcd0f0;font-size:11px;margin-top:10px">💰 Available Balance</div><div class="ca2bal" id="ca2bal">UGX 0</div><div class="ca2topgrid"><button class="p" data-k="deposit">💳 Deposit</button><button data-k="withdraw">📤 Withdraw</button></div><div class="ca2lowergrid"><button data-k="rentals">🏭 Machines</button><button data-k="transactions">🧾 Transactions</button><button data-k="tasks">🎯 Tasks</button><button data-k="invite">👥 Invite</button><button data-k="rewards">🎁 Rewards</button><button data-k="team">👥 Team</button><button data-k="account">👤 Account</button></div></div><div class="ca2panel" id="ca2panel"></div>`;main.prepend(home);panel=home.querySelector('#ca2panel');home.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>feature(b.dataset.k));home.style.display='block';balance();const observer=new MutationObserver(()=>{if(!cat){const n=document.getElementById('casharrowRentalCatalog');if(n)cat=n}});observer.observe(document.documentElement,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),20000)}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();window.cashArrowCompactHome=start;
+
+  const token = () => localStorage.getItem('casharrowToken');
+  const user = () => { try { return JSON.parse(localStorage.getItem('casharrowUser') || '{}'); } catch { return {}; } };
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money = n => `UGX ${Number(n || 0).toLocaleString()}`;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    body{background:#f4f7fb!important;color:#172033!important;padding-bottom:82px!important}
+    .container{max-width:680px!important;padding:0 14px 96px!important}
+    .ca2{display:block!important}
+    .ca2hero{background:linear-gradient(145deg,#0757e8,#13a4ff);border-radius:24px;padding:20px;color:#fff;box-shadow:0 14px 35px rgba(7,87,232,.22);margin-bottom:14px}
+    .ca2title{font-size:24px;font-weight:900}.ca2subtitle{font-size:13px;opacity:.82;margin-top:4px}.ca2label{font-size:12px;opacity:.8;margin-top:20px}.ca2bal{font-size:34px;font-weight:900;margin:4px 0 16px}
+    .ca2quick{display:grid;grid-template-columns:1fr 1fr;gap:9px}.ca2quick button,.ca2panel button{border:0;border-radius:13px;padding:13px;font-weight:900;font-size:14px;min-height:48px}.ca2quick button{background:#fff;color:#0757e8}.ca2quick button.secondary{background:#0b4dc8;color:#fff}
+    .ca2panel{display:none;background:#fff;border:1px solid #e2e9f3;border-radius:20px;padding:17px;box-shadow:0 8px 24px rgba(17,45,88,.08);margin-bottom:14px}.ca2panel.open{display:block}.ca2panel h2{font-size:21px;margin:0 0 12px}.ca2back{float:right;background:#eef4ff!important;color:#0757e8!important;min-height:38px!important;padding:8px 12px!important;font-size:12px!important}.ca2row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #edf1f6;font-size:13px}.ca2row:last-child{border-bottom:0}.ca2muted{font-size:12px;color:#718096;line-height:1.5}.ca2primary{background:#0757e8!important;color:#fff!important}.ca2cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ca2card{background:#f7f9fd;border:1px solid #e5ebf4;border-radius:15px;padding:13px}.ca2card span{display:block;color:#718096;font-size:11px}.ca2card b{display:block;font-size:16px;margin-top:5px}.ca2-machine{background:#f8faff;border:1px solid #e1e9f5;border-radius:17px;padding:13px;margin:9px 0}.ca2-machine-top{display:flex;justify-content:space-between;gap:10px}.ca2-machine-code{font-size:16px;font-weight:900}.ca2-status{font-size:10px;font-weight:900;border-radius:99px;padding:6px 9px;background:#e8f8f0;color:#087b48}.ca2-status.completed{background:#eaf2ff;color:#0757e8}.ca2-machine-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.ca2-machine-box{background:#fff;border-radius:10px;padding:8px}.ca2-machine-box span{display:block;color:#718096;font-size:9px}.ca2-machine-box b{display:block;font-size:11px;margin-top:3px}.ca2-empty{padding:20px;text-align:center;background:#f7f9fd;border:1px dashed #cfd9e8;border-radius:15px;color:#718096;font-size:13px;line-height:1.5}
+    .ca-account-menu{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ca-account-menu button{background:#f7f9fd;color:#172033;border:1px solid #e2e9f3;text-align:left;min-height:62px}.ca-account-menu button span{display:block;font-size:12px;color:#718096;font-weight:600;margin-top:3px}
+    .bottom{height:72px!important;background:#fff!important;border-top:1px solid #e6ebf2!important;box-shadow:0 -6px 20px rgba(0,0,0,.08)!important}
+    .bottom .nav{font-size:11px!important;color:#718096!important;cursor:pointer;min-width:64px}.bottom .nav div{font-size:21px!important;margin-bottom:2px}.bottom .nav.active{color:#0757e8!important;font-weight:900}
+    #rentalCatalog,#userWallet,#withdrawSection,#transactions,#memberTools,#todayTasks,#rewardsSection,#teamSection{display:none!important}
+    @media(max-width:480px){.ca2hero{border-radius:20px;padding:17px}.ca2title{font-size:22px}.ca2bal{font-size:30px}.ca-account-menu{grid-template-columns:1fr 1fr}.ca2panel{padding:14px}}
+  `;
+  document.head.appendChild(style);
+
+  let home, panel;
+  const api = async (path, opts = {}) => {
+    const r = await fetch(path, {...opts, headers:{...(opts.headers || {}), Authorization:`Bearer ${token()}`}, cache:'no-store'});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw Error(d.message || 'Request failed');
+    return d;
+  };
+
+  function hideLegacy(){
+    ['rentalCatalog','userWallet','withdrawSection','transactions','memberTools','todayTasks','rewardsSection','teamSection','casharrowDynamicMemberProducts','casharrowMemberProducts','casharrowStaticRentals'].forEach(id=>document.getElementById(id)?.style.setProperty('display','none','important'));
+    document.querySelectorAll('main.container>.cardbox').forEach(n=>n.style.setProperty('display','none','important'));
+  }
+
+  async function refreshBalance(){
+    try{const d=await api('/api/wallet');const n=Number(d.balance ?? d.wallet?.balance ?? d.walletBalance ?? 0);const el=document.getElementById('ca2bal');if(el)el.textContent=money(n);}catch(_){ }
+  }
+
+  function closePanel(){if(panel){panel.classList.remove('open');panel.innerHTML='';}}
+  function openPanel(title, html){panel.innerHTML=`<button class="ca2back">Home</button><h2>${title}</h2>${html}`;panel.classList.add('open');panel.querySelector('.ca2back').onclick=closePanel;panel.scrollIntoView({behavior:'smooth',block:'start'});}
+
+  async function showAccount(){
+    openPanel('👤 My Account', `<div class="ca2cardgrid"><div class="ca2card"><span>Account</span><b>${esc(user().name || user().phone || 'Member')}</b></div><div class="ca2card"><span>Balance</span><b id="caAccountBalance">Loading…</b></div></div><div class="ca-account-menu" style="margin-top:12px"><button data-account="machines">🏭 My Machines<span>Machines you have purchased</span></button><button data-account="tasks">🎯 Daily Tasks<span>Complete available tasks</span></button><button data-account="rewards">🎁 Rewards<span>View your rewards</span></button><button data-account="team">👥 My Team<span>Referral team and earnings</span></button><button data-account="transactions">🧾 Transactions<span>Wallet activity</span></button><button data-account="deposit">💳 Deposit<span>Add funds to your wallet</span></button><button data-account="withdraw">📤 Withdraw<span>Request a withdrawal</span></button></div>`);
+    refreshBalance().then(async()=>{try{const d=await api('/api/wallet');const n=Number(d.balance ?? d.wallet?.balance ?? 0);const el=document.getElementById('caAccountBalance');if(el)el.textContent=money(n);}catch(_){}});
+    panel.querySelectorAll('[data-account]').forEach(b=>b.onclick=()=>accountAction(b.dataset.account));
+  }
+
+  async function accountAction(k){
+    if(k==='machines') return showMachines();
+    if(k==='tasks') return showList('🎯 Daily Tasks','/api/tasks','tasks');
+    if(k==='rewards') return showList('🎁 Rewards','/api/rewards','rewards');
+    if(k==='transactions') return showTransactions();
+    if(k==='team') return showTeam();
+    if(k==='deposit'){closePanel();window.openDeposit?.();return;}
+    if(k==='withdraw'){closePanel();window.openWithdraw?.();return;}
+  }
+
+  async function showMachines(){
+    openPanel('🏭 My Machines','<div id="caBody" class="ca2-muted">Loading your machines…</div>');
+    try{const d=await api('/api/rentals');const a=Array.isArray(d.rentals)?d.rentals:[];const body=document.getElementById('caBody');if(!a.length){body.innerHTML='<div class="ca2-empty">You do not own any machines yet.<br><br>Open <b>Machines</b> below to view available products.</div>';return;}body.innerHTML=a.map(x=>{const done=String(x.status||'').toLowerCase()==='completed';return `<div class="ca2-machine"><div class="ca2-machine-top"><div class="ca2-machine-code">${esc(x.code||'Machine')}</div><span class="ca2-status ${done?'completed':''}">${done?'Completed':'Active'}</span></div><div class="ca2-machine-grid"><div class="ca2-machine-box"><span>Purchase price</span><b>${money(x.rental_fee)}</b></div><div class="ca2-machine-box"><span>Rental period</span><b>${Number(x.rental_days||0)} days</b></div><div class="ca2-machine-box"><span>Start</span><b>${x.start_at?new Date(x.start_at).toLocaleDateString():'—'}</b></div><div class="ca2-machine-box"><span>End</span><b>${x.end_at?new Date(x.end_at).toLocaleDateString():'—'}</b></div></div></div>`}).join('');}catch(e){document.getElementById('caBody').textContent=e.message;}
+  }
+
+  async function showList(title,path,type){
+    openPanel(title,'<div id="caBody" class="ca2-muted">Loading…</div>');
+    try{const d=await api(path);const a=d[type]||d.data||[];const body=document.getElementById('caBody');body.innerHTML=a.length?a.map(x=>`<div class="ca2row"><span>${esc(x.title||x.name||x.description||type)}<br><span class="ca2-muted">${money(x.reward||x.reward_amount||x.amount||0)}</span></span>${x.claimed?'✅':x.id?`<button class="ca2primary" data-claim="${x.id}">Claim</button>`:''}</div>`).join(''):'Nothing available right now.';body.querySelectorAll('[data-claim]').forEach(b=>b.onclick=async()=>{try{await api(`/api/${type}/${b.dataset.claim}/claim`,{method:'POST'});refreshBalance();showList(title,path,type);}catch(e){alert(e.message)}});}catch(e){document.getElementById('caBody').textContent=e.message;}
+  }
+
+  async function showTransactions(){
+    openPanel('🧾 Transactions','<div id="caBody" class="ca2-muted">Loading…</div>');
+    try{const d=await api('/api/transactions');const a=d.transactions||[];document.getElementById('caBody').innerHTML=a.length?a.map(x=>`<div class="ca2row"><span>${esc(x.description||x.type||'Transaction')}<br><span class="ca2-muted">${x.created_at?new Date(x.created_at).toLocaleString():''}</span></span><b>${money(x.amount)}</b></div>`).join(''):'No transactions yet.';}catch(e){document.getElementById('caBody').textContent=e.message;}
+  }
+
+  async function showTeam(){
+    openPanel('👥 My Team','<div id="caBody" class="ca2-muted">Loading…</div>');
+    try{const d=await api('/api/team');const a=d.team||d.members||[];document.getElementById('caBody').innerHTML=`<div class="ca2card"><span>Team members</span><b>${a.length}</b></div>`+(a.length?a.map(x=>`<div class="ca2row"><span>${esc(x.name||x.phone||'Member')}</span><b>${money(x.earnings||x.total_earnings||0)}</b></div>`).join(''):'<div class="ca2empty">No team members yet.</div>');}catch(e){document.getElementById('caBody').textContent=e.message;}
+  }
+
+  function showMachinesCatalog(){
+    closePanel();
+    window.cashArrowOpenMachines?.();
+    const target=document.getElementById('casharrowRentalCatalog');
+    if(target){target.scrollIntoView({behavior:'smooth',block:'start'});target.style.display='block';}
+  }
+
+  function setupNav(){
+    const nav=document.querySelector('.bottom');if(!nav)return;
+    const items=nav.querySelectorAll('.nav');
+    const labels=[['🏠','Home'],['🏭','Machines'],['💰','Wallet'],['👤','My Account']];
+    items.forEach((el,i)=>{if(i>3)return;el.innerHTML=`<div>${labels[i][0]}</div>${labels[i][1]}`;el.onclick=()=>{items.forEach(x=>x.classList.remove('active'));el.classList.add('active');if(i===0){closePanel();home?.scrollIntoView({behavior:'smooth',block:'start'});}if(i===1)showMachinesCatalog();if(i===2){closePanel();window.goToWallet?.();}if(i===3)showAccount();};});
+  }
+
+  function start(){
+    if(!token()||home)return;
+    const main=document.querySelector('main.container');if(!main)return;
+    hideLegacy();
+    home=document.createElement('section');home.id='casharrowCompactHome';home.className='ca2';
+    home.innerHTML=`<div class="ca2hero"><div class="ca2title">🏹 CashArrow</div><div class="ca2subtitle">Welcome back, ${esc(user().name||user().phone||'Member')}</div><div class="ca2label">Available Balance</div><div class="ca2bal" id="ca2bal">UGX 0</div><div class="ca2quick"><button data-home="deposit">💳 Deposit</button><button class="secondary" data-home="withdraw">📤 Withdraw</button></div></div><div class="ca2panel" id="ca2panel"></div>`;
+    main.prepend(home);panel=home.querySelector('#ca2panel');
+    home.querySelector('[data-home="deposit"]').onclick=()=>{window.openDeposit?.();};home.querySelector('[data-home="withdraw"]').onclick=()=>{window.openWithdraw?.();};
+    setupNav();refreshBalance();
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+  window.handleAccountAction=showAccount;
+  window.cashArrowOpenMachines=showMachinesCatalog;
 })();
