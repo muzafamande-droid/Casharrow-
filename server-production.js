@@ -25,13 +25,8 @@ app.get("/member.html", (req, res) => {
   try {
     const file = path.join(__dirname, "public", "member.html");
     let html = fs.readFileSync(file, "utf8");
-    // Visible-brand transition only: preserve lowercase technical identifiers
-    // such as casharrowToken, casharrowUser, API routes, and event names.
     html = html.replaceAll("CashArrow", "AVEILOT");
-    // The member page is served through this route, so inject the rental catalog
-    // here as well as on the landing page. This makes Machines available without
-    // depending on a separate page or stale browser script bundle.
-    const scripts = '<script src="/rental-catalog.js?v=photos4"></script>';
+    const scripts = '<script src="/rental-catalog.js?v=photos5"></script><script src="/aveilot-machine-catalog-fix.js?v=1"></script>';
     html = html.replace("</body>", `${scripts}</body>`);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.set("Pragma", "no-cache");
@@ -66,7 +61,7 @@ app.use("/api", adminProducts.router);
 app.get("/", (req, res) => {
   const file = path.join(__dirname, "public", "index.html");
   let html = fs.readFileSync(file, "utf8");
-  const scripts = '<script src="/member-dashboard-v2.js?v=11"></script><script src="/member-dashboard-boot.js?v=2"></script><script src="/casharrow-ui-fixes.js?v=4"></script><script src="/rental-catalog.js?v=photos3"></script>';
+  const scripts = '<script src="/member-dashboard-v2.js?v=14"></script><script src="/member-dashboard-boot.js?v=3"></script><script src="/casharrow-ui-fixes.js?v=5"></script><script src="/rental-catalog.js?v=photos5"></script><script src="/aveilot-machine-catalog-fix.js?v=1"></script>';
   html = html.replace("</body>", `${scripts}</body>`);
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.set("Pragma", "no-cache");
