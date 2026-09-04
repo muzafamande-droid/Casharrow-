@@ -218,7 +218,8 @@ async function completeRental({ userId, rentalId }) {
 
 router.get("/products", async (req, res) => {
   try {
-    await ensurePgSchema();
+    // Schema and seed data are prepared once during server startup via ready().
+    // Keep this hot path read-only so opening Machines stays fast and responsive.
     const result = await db.query(`SELECT id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured FROM products ORDER BY series, id`);
     res.json({ success: true, products: result.rows });
   } catch (error) {
@@ -231,7 +232,6 @@ router.get("/products/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, message: "Invalid product ID" });
   try {
-    await ensurePgSchema();
     const result = await db.query(`SELECT id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured FROM products WHERE id = $1`, [id]);
     if (!result.rowCount) return res.status(404).json({ success: false, message: "Product not found" });
     res.json({ success: true, product: result.rows[0] });
@@ -243,7 +243,6 @@ router.get("/products/:id", async (req, res) => {
 
 router.get("/rentals", authenticate, async (req, res) => {
   try {
-    await ensurePgSchema();
     const result = await db.query(`
       SELECT r.id, r.product_id, p.code, p.name, r.rental_fee, r.rental_days, r.start_at, r.end_at, r.status, r.return_amount, r.completed_at, r.created_at
       FROM rentals r JOIN products p ON p.id = r.product_id
@@ -260,7 +259,6 @@ router.post("/rentals", authenticate, async (req, res) => {
   const productId = Number(req.body.productId);
   if (!Number.isInteger(productId) || productId <= 0) return res.status(400).json({ success: false, message: "Invalid product" });
   try {
-    await ensurePgSchema();
     const result = await createRental({ userId: req.rentalUser.id, productId });
     if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
     res.status(201).json({
@@ -280,7 +278,6 @@ router.post("/rentals/:id/complete", authenticate, async (req, res) => {
   const rentalId = Number(req.params.id);
   if (!Number.isInteger(rentalId) || rentalId <= 0) return res.status(400).json({ success: false, message: "Invalid rental ID" });
   try {
-    await ensurePgSchema();
     const result = await completeRental({ userId: req.rentalUser.id, rentalId });
     if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
     res.json({ success: true, message: "Rental completed and return processed", amount: result.amount });
