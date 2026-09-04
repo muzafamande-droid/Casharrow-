@@ -1,20 +1,20 @@
-const app = require("./server-legacy");
+const app = require("./server-production");
+const db = require("./database-pg");
+const rental = require("./rental-routes");
+const { startRentalExpiryWorker } = require("./rental-expiry-worker");
 
-// Inject exactly one authoritative member dashboard implementation.
-const originalSend = app.response.send;
-app.response.send = function (body) {
-  if (this.req && this.req.path === "/" && typeof body === "string" && body.includes("</body>")) {
-    body = body.replace(
-      "</body>",
-      '  <script src="/member-dashboard-v2.js?v=5"></script><script src="/casharrow-ui-fixes.js?v=1"></script><script src="/casharrow-machine-designs.js?v=2"></script></body>'
-    );
-  }
-  return originalSend.call(this, body);
-};
+const PORT = Number(process.env.PORT || 3000);
 
-// Export the Express app before loading the authoritative rental/financial wrapper.
-module.exports = app;
-
-if (require.main === module) {
-  require("./server-with-rentals-v4");
+async function start() {
+  await db.init();
+  await rental.ready();
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`CashArrow production server listening on port ${PORT}`);
+  });
+  startRentalExpiryWorker();
 }
+
+start().catch(error => {
+  console.error("CashArrow startup failed:", error);
+  process.exit(1);
+});
