@@ -3,7 +3,7 @@
   window.__aveilotRealMachinePhotos = true;
 
   // Twenty different machine photographs. No product code reuses the same source image.
-  // These are temporary visual references while the dedicated AVEILOT AI render set is prepared.
+  // These remain temporary visual references while the dedicated AVEILOT AI render set is prepared.
   const FILES = [
     '2012 09 07 2012 09 07 Dieselgeneratoren DSCI9222.JPG',
     '20150724 libramont026.JPG',
@@ -50,7 +50,7 @@
     if (!box.querySelector('.aveilot-real-badge')) {
       const badge = document.createElement('div');
       badge.className = 'aveilot-real-badge';
-      badge.textContent = `🏹 AVEILOT · ${code}`;
+      badge.textContent = `AVEILOT · ${code}`;
       box.appendChild(badge);
     }
   }
@@ -60,17 +60,14 @@
     const s = document.createElement('style');
     s.id = 'aveilotPremiumPhotoStyle';
     s.textContent = `
-      .aveilot-photo-stage{position:relative!important;overflow:hidden!important;background:#0a1220!important;isolation:isolate;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10),0 12px 30px rgba(4,16,35,.14)}
-      .aveilot-photo-stage:before{content:'';position:absolute;inset:-20%;z-index:1;pointer-events:none;background:radial-gradient(circle at 18% 18%,rgba(255,255,255,.28),transparent 28%),linear-gradient(125deg,transparent 42%,rgba(255,255,255,.12) 50%,transparent 58%);mix-blend-mode:screen;transform:translateX(-18%);animation:aveilotLightSweep 8s ease-in-out infinite}
-      .aveilot-photo-stage:after{content:'POWERGEN';position:absolute;right:10px;top:10px;z-index:2;color:rgba(255,255,255,.72);font:900 9px/1 Arial,sans-serif;letter-spacing:2px;padding:6px 7px;border:1px solid rgba(255,255,255,.18);border-radius:7px;background:rgba(3,13,28,.35);backdrop-filter:blur(5px);pointer-events:none}
-      .aveilot-photo-stage img{position:relative;z-index:0;width:100%;height:100%;object-fit:cover;filter:contrast(1.06) saturate(1.08);transition:transform .35s ease,filter .35s ease}
-      .aveilot-photo-stage:hover img{transform:scale(1.035);filter:contrast(1.1) saturate(1.12) brightness(1.03)}
-      .aveilot-real-badge{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(7,87,232,.94);color:#fff;border-radius:9px;padding:7px 10px;font:900 11px/1 Arial,sans-serif;letter-spacing:.25px;box-shadow:0 4px 14px rgba(0,0,0,.3);pointer-events:none}
-      .aveilot-photo-a1,.aveilot-photo-a2,.aveilot-photo-a3,.aveilot-photo-a4,.aveilot-photo-a5{background:linear-gradient(145deg,#17253b,#07101e)!important}
-      .aveilot-photo-b1,.aveilot-photo-b2,.aveilot-photo-b3,.aveilot-photo-b4,.aveilot-photo-b5{background:linear-gradient(145deg,#20262e,#090d13)!important}
-      .aveilot-photo-c1,.aveilot-photo-c2,.aveilot-photo-c3,.aveilot-photo-c4,.aveilot-photo-c5{background:linear-gradient(145deg,#182d2b,#071312)!important}
-      .aveilot-photo-d1,.aveilot-photo-d2,.aveilot-photo-d3,.aveilot-photo-d4,.aveilot-photo-d5{background:linear-gradient(145deg,#29231a,#0e0b07)!important}
-      @keyframes aveilotLightSweep{0%,100%{opacity:.18;transform:translateX(-22%) rotate(-3deg)}50%{opacity:.42;transform:translateX(22%) rotate(3deg)}}
+      .aveilot-photo-stage{position:relative!important;overflow:hidden!important;background:#0757e8!important;isolation:isolate;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 12px 30px rgba(7,87,232,.22)}
+      .aveilot-photo-stage:before{content:'';position:absolute;inset:-25%;z-index:1;pointer-events:none;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.50),transparent 24%),linear-gradient(125deg,transparent 38%,rgba(255,255,255,.22) 48%,transparent 56%);mix-blend-mode:screen;transform:translateX(-18%);animation:aveilotLightSweep 7s ease-in-out infinite}
+      .aveilot-photo-stage:after{content:'AVEILOT';position:absolute;right:10px;top:10px;z-index:2;color:#fff;font:900 10px/1 Arial,sans-serif;letter-spacing:2px;padding:7px 8px;border:1px solid rgba(255,255,255,.65);border-radius:7px;background:rgba(7,87,232,.72);box-shadow:0 0 16px rgba(255,255,255,.28);pointer-events:none}
+      .aveilot-photo-stage img{position:relative;z-index:0;width:100%;height:100%;object-fit:cover;filter:saturate(.82) hue-rotate(178deg) contrast(1.10) brightness(.98);transition:transform .35s ease,filter .35s ease}
+      .aveilot-photo-stage:hover img{transform:scale(1.035);filter:saturate(.95) hue-rotate(178deg) contrast(1.14) brightness(1.03)}
+      .aveilot-real-badge{position:absolute;left:10px;bottom:10px;z-index:3;background:#0757e8;color:#fff;border-radius:9px;padding:7px 10px;font:900 11px/1 Arial,sans-serif;letter-spacing:.35px;box-shadow:0 0 16px rgba(255,255,255,.20);pointer-events:none}
+      .aveilot-photo-stage:global{}
+      @keyframes aveilotLightSweep{0%,100%{opacity:.20;transform:translateX(-24%) rotate(-3deg)}50%{opacity:.48;transform:translateX(24%) rotate(3deg)}}
       @media(prefers-reduced-motion:reduce){.aveilot-photo-stage:before{animation:none}}
     `;
     document.head.appendChild(s);
