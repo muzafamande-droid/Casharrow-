@@ -38,7 +38,7 @@
   }
 
   async function refreshBalance(){
-    try{const d=await api('/api/wallet');const n=Number(d.balance ?? d.wallet?.balance ?? d.walletBalance ?? 0);const el=document.getElementById('ca2bal');if(el)el.textContent=money(n);}catch(_){ }
+    try{const d=await api('/api/wallet');const n=Number(d.wallet?.balance ?? d.balance ?? d.walletBalance ?? 0);const el=document.getElementById('ca2bal');if(el)el.textContent=money(n);}catch(_){ }
   }
 
   function closePanel(){if(panel){panel.classList.remove('open');panel.innerHTML='';}}
@@ -46,7 +46,7 @@
 
   async function showAccount(){
     openPanel('👤 My Account', `<div class="ca2cardgrid"><div class="ca2card"><span>Account</span><b>${esc(user().name || user().phone || 'Member')}</b></div><div class="ca2card"><span>Balance</span><b id="caAccountBalance">Loading…</b></div></div><div class="ca-account-menu" style="margin-top:12px"><button data-account="machines">🏭 My Machines<span>Machines you have purchased</span></button><button data-account="tasks">🎯 Daily Tasks<span>Complete available tasks</span></button><button data-account="rewards">🎁 Rewards<span>View your rewards</span></button><button data-account="team">👥 My Team<span>Referral team and earnings</span></button><button data-account="transactions">🧾 Transactions<span>Wallet activity</span></button><button data-account="deposit">💳 Deposit<span>Add funds to your wallet</span></button><button data-account="withdraw">📤 Withdraw<span>Request a withdrawal</span></button></div>`);
-    refreshBalance().then(async()=>{try{const d=await api('/api/wallet');const n=Number(d.balance ?? d.wallet?.balance ?? 0);const el=document.getElementById('caAccountBalance');if(el)el.textContent=money(n);}catch(_){}});
+    try{const d=await api('/api/wallet');const n=Number(d.wallet?.balance ?? d.balance ?? 0);const el=document.getElementById('caAccountBalance');if(el)el.textContent=money(n);}catch(_){ }
     panel.querySelectorAll('[data-account]').forEach(b=>b.onclick=()=>accountAction(b.dataset.account));
   }
 
@@ -67,17 +67,28 @@
 
   async function showList(title,path,type){
     openPanel(title,'<div id="caBody" class="ca2-muted">Loading…</div>');
-    try{const d=await api(path);const a=d[type]||d.data||[];const body=document.getElementById('caBody');body.innerHTML=a.length?a.map(x=>`<div class="ca2row"><span>${esc(x.title||x.name||x.description||type)}<br><span class="ca2-muted">${money(x.reward||x.reward_amount||x.amount||0)}</span></span>${x.claimed?'✅':x.id?`<button class="ca2primary" data-claim="${x.id}">Claim</button>`:''}</div>`).join(''):'Nothing available right now.';body.querySelectorAll('[data-claim]').forEach(b=>b.onclick=async()=>{try{await api(`/api/${type}/${b.dataset.claim}/claim`,{method:'POST'});refreshBalance();showList(title,path,type);}catch(e){alert(e.message)}});}catch(e){document.getElementById('caBody').textContent=e.message;}
+    try{
+      const d=await api(path);const a=Array.isArray(d[type])?d[type]:[];const body=document.getElementById('caBody');
+      if(!a.length){body.innerHTML='<div class="ca2-empty">Nothing available right now.</div>';return;}
+      body.innerHTML=a.map(x=>{
+        const isTask=type==='tasks';
+        const claimed=isTask ? Number(x.done)===1 : Number(x.claimed)===1;
+        const amount=Number(isTask ? x.reward : x.amount || 0);
+        const action=claimed?'✅ Claimed':`<button class="ca2primary" data-claim="${esc(x.id)}">Claim</button>`;
+        return `<div class="ca2row"><span>${esc(x.title||x.name||x.description||type)}<br><span class="ca2-muted">${money(amount)}</span></span>${action}</div>`;
+      }).join('');
+      body.querySelectorAll('[data-claim]').forEach(b=>b.onclick=async()=>{try{await api(`/api/${type}/${b.dataset.claim}/claim`,{method:'POST'});await refreshBalance();showList(title,path,type);}catch(e){alert(e.message)}});
+    }catch(e){document.getElementById('caBody').textContent=e.message;}
   }
 
   async function showTransactions(){
     openPanel('🧾 Transactions','<div id="caBody" class="ca2-muted">Loading…</div>');
-    try{const d=await api('/api/transactions');const a=d.transactions||[];document.getElementById('caBody').innerHTML=a.length?a.map(x=>`<div class="ca2row"><span>${esc(x.description||x.type||'Transaction')}<br><span class="ca2-muted">${x.created_at?new Date(x.created_at).toLocaleString():''}</span></span><b>${money(x.amount)}</b></div>`).join(''):'No transactions yet.';}catch(e){document.getElementById('caBody').textContent=e.message;}
+    try{const d=await api('/api/transactions');const a=Array.isArray(d.transactions)?d.transactions:[];document.getElementById('caBody').innerHTML=a.length?a.map(x=>`<div class="ca2row"><span>${esc(x.reference||x.type||'Transaction')}<br><span class="ca2-muted">${x.date?new Date(x.date).toLocaleString():''}</span></span><b>${money(x.amount)}</b></div>`).join(''):'<div class="ca2-empty">No transactions yet.</div>';}catch(e){document.getElementById('caBody').textContent=e.message;}
   }
 
   async function showTeam(){
     openPanel('👥 My Team','<div id="caBody" class="ca2-muted">Loading…</div>');
-    try{const d=await api('/api/team');const a=d.team||d.members||[];document.getElementById('caBody').innerHTML=`<div class="ca2card"><span>Team members</span><b>${a.length}</b></div>`+(a.length?a.map(x=>`<div class="ca2row"><span>${esc(x.name||x.phone||'Member')}</span><b>${money(x.earnings||x.total_earnings||0)}</b></div>`).join(''):'<div class="ca2empty">No team members yet.</div>');}catch(e){document.getElementById('caBody').textContent=e.message;}
+    try{const d=await api('/api/team');const a=Array.isArray(d.members)?d.members:[];const total=Number(d.totalEarn||0);document.getElementById('caBody').innerHTML=`<div class="ca2cardgrid"><div class="ca2card"><span>Team members</span><b>${Number(d.totalMembers ?? a.length)}</b></div><div class="ca2card"><span>Team earnings</span><b>${money(total)}</b></div></div>`+(a.length?a.map(x=>`<div class="ca2row"><span>${esc(x.member_name||'Member')}</span><b>${money(x.earn||0)}</b></div>`).join(''):'<div class="ca2-empty" style="margin-top:10px">No team members yet.</div>');}catch(e){document.getElementById('caBody').textContent=e.message;}
   }
 
   function showMachinesCatalog(){
