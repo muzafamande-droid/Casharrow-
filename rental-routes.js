@@ -39,6 +39,8 @@ const RENTAL_POLICY = {
   ]
 };
 
+const SERIES_ASSETS = { A: "/machine-a.svg", B: "/machine-b.svg", C: "/machine-c.svg", D: "/machine-d.svg" };
+
 function authenticate(req, res, next) {
   const header = req.headers.authorization || "";
   if (!header.startsWith("Bearer ")) return res.status(401).json({ success: false, message: "Authentication required" });
@@ -87,21 +89,30 @@ async function ensurePgSchema() {
     CREATE INDEX IF NOT EXISTS idx_rentals_status_end ON rentals(status, end_at);
   `);
 
-  // Seed only missing catalog records; admin-edited products are preserved.
   for (const [series, terms] of Object.entries(RENTAL_POLICY)) {
     for (let i = 0; i < terms.length; i += 1) {
       const code = `${series}${i + 1}`;
       const term = terms[i];
+      const imageUrl = SERIES_ASSETS[series];
       await db.query(`
         INSERT INTO products (id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured)
         VALUES (nextval('casharrow_products_id_seq'), $1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9)
-        ON CONFLICT (code) DO NOTHING
+        ON CONFLICT (code) DO UPDATE SET
+          series = EXCLUDED.series,
+          name = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN EXCLUDED.name ELSE products.name END,
+          description = CASE WHEN products.description IS NULL OR products.description LIKE 'CashArrow%' THEN EXCLUDED.description ELSE products.description END,
+          image_url = CASE WHEN products.image_url IS NULL OR products.image_url = '/product-placeholder.svg' THEN EXCLUDED.image_url ELSE products.image_url END,
+          rental_fee = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN EXCLUDED.rental_fee ELSE products.rental_fee END,
+          rental_days = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN EXCLUDED.rental_days ELSE products.rental_days END,
+          return_amount = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN EXCLUDED.return_amount ELSE products.return_amount END,
+          active = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN TRUE ELSE products.active END,
+          featured = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN EXCLUDED.featured ELSE products.featured END
       `, [
         series,
         code,
-        `CashArrow Generator ${code}`,
-        `${series} Series generator rental product ${code}. ${term.days}-day rental term.`,
-        "/product-placeholder.svg",
+        `AVEILOT PowerGen Machine ${code}`,
+        `${series} Series PowerGen rental machine ${code}. ${term.days}-day rental term.`,
+        imageUrl,
         term.fee,
         term.days,
         term.returnAmount,
@@ -185,12 +196,7 @@ async function createRental({ userId, productId }) {
       }
     }
 
-    return {
-      ok: true,
-      rentalId,
-      endAt: rental.rows[0].end_at,
-      referralCommission
-    };
+    return { ok: true, rentalId, endAt: rental.rows[0].end_at, referralCommission };
   });
 }
 
@@ -218,8 +224,6 @@ async function completeRental({ userId, rentalId }) {
 
 router.get("/products", async (req, res) => {
   try {
-    // Schema and seed data are prepared once during server startup via ready().
-    // Keep this hot path read-only so opening Machines stays fast and responsive.
     const result = await db.query(`SELECT id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured FROM products ORDER BY series, id`);
     res.json({ success: true, products: result.rows });
   } catch (error) {
@@ -261,13 +265,7 @@ router.post("/rentals", authenticate, async (req, res) => {
   try {
     const result = await createRental({ userId: req.rentalUser.id, productId });
     if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
-    res.status(201).json({
-      success: true,
-      message: "Rental created successfully",
-      rentalId: result.rentalId,
-      endAt: result.endAt,
-      referralCommission: result.referralCommission
-    });
+    res.status(201).json({ success: true, message: "Rental created successfully", rentalId: result.rentalId, endAt: result.endAt, referralCommission: result.referralCommission });
   } catch (error) {
     console.error("Rental creation failed:", error);
     res.status(500).json({ success: false, message: "Unable to create rental" });
