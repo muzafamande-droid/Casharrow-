@@ -9,6 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16
@@ -41,4 +42,17 @@ jobs:
         run: npm install
 
       - name: Run tests
-        run: npm test # verify the complete CashArrow test suite
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          tests=(tests/*.test.js)
+          if [ ${#tests[@]} -eq 0 ]; then
+            echo "No test files found"
+            exit 1
+          fi
+          for test_file in "${tests[@]}"; do
+            echo "=== Running ${test_file} ==="
+            timeout --signal=TERM --kill-after=10s 120s node --test --test-concurrency=1 "${test_file}"
+          done
