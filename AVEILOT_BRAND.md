@@ -9,13 +9,15 @@
 ## Secondary line
 *Your money. Your next move.*
 
-## Rebrand rule
-CashArrow remains the current production/application identity until the AVEILOT transition is intentionally completed. Do not change database schema, authentication tokens, API routes, referral codes, transaction references, or production infrastructure merely to change the visible brand.
+## Brand rule
+AVEILOT is the public-facing product identity. User-facing pages, messages, metadata, documentation, and deployment configuration should use AVEILOT.
 
-## Transition plan
-1. Keep the existing CashArrow production system stable.
-2. Introduce AVEILOT branding in the user-facing experience.
-3. Preserve backwards compatibility for existing CashArrow URLs and stored data.
-4. Update metadata, landing/member UI, referral copy, and visual identity.
-5. Perform final domain/trademark/company-name clearance before registering or publicly claiming the AVEILOT name.
-6. Re-test the complete production flow before announcing the rebrand.
+## Compatibility rule
+Existing database structures, stored data, authentication behavior, API routes, referral codes, and transaction references are preserved where changing them would risk existing accounts or financial records. Internal compatibility identifiers are not public branding.
+
+## Launch direction
+1. Use AVEILOT consistently across the website.
+2. Remove legacy brand names from visible user-facing copy and operational messages.
+3. Keep existing data safe while the rebrand is completed.
+4. Update deployment/service naming and the public domain separately from application code.
+5. Re-test signup, login, referrals, machines, wallet, rentals, deposits, withdrawals, and admin flows before public launch.
