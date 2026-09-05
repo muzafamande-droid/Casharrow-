@@ -168,9 +168,14 @@ async function init() {
     }
   }
 
-  await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_deposits_idempotency_key ON deposits(idempotency_key) WHERE idempotency_key IS NOT NULL");
+  // Idempotency keys are scoped to each user. A retry by the same user must
+  // resolve to the existing transaction, while two different users may use
+  // the same client-generated key without colliding.
+  await query("DROP INDEX IF EXISTS uq_deposits_idempotency_key");
+  await query("DROP INDEX IF EXISTS uq_withdrawals_idempotency_key");
+  await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_deposits_user_idempotency_key ON deposits(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL");
+  await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_withdrawals_user_idempotency_key ON withdrawals(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL");
   await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_deposits_provider_reference ON deposits(provider_reference) WHERE provider_reference IS NOT NULL");
-  await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_withdrawals_idempotency_key ON withdrawals(idempotency_key) WHERE idempotency_key IS NOT NULL");
   await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_withdrawals_provider_reference ON withdrawals(provider_reference) WHERE provider_reference IS NOT NULL");
 
   await syncSequence("casharrow_users_id_seq", "users");
