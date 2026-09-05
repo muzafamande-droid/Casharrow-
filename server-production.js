@@ -33,7 +33,7 @@ app.get("/member.html", (req, res) => {
     res.set("Expires", "0");
     res.type("html").send(html);
   } catch (error) {
-    console.error("Member dashboard failed to load:", error);
+    console.error("AVEILOT member dashboard failed to load:", error);
     res.status(500).send("Unable to load member dashboard");
   }
 });
@@ -43,10 +43,10 @@ app.use(express.static(path.join(__dirname, "public"), { index: false }));
 app.get("/api/status", async (req, res) => {
   try {
     await db.query("SELECT 1");
-    res.json({ success: true, message: "CashArrow server is running", database: "connected", environment: process.env.NODE_ENV || "development" });
+    res.json({ success: true, message: "AVEILOT server is running", database: "connected", environment: process.env.NODE_ENV || "development" });
   } catch (error) {
     console.error("Health check failed:", error);
-    res.status(503).json({ success: false, message: "CashArrow database is unavailable" });
+    res.status(503).json({ success: false, message: "AVEILOT database is unavailable" });
   }
 });
 
@@ -75,14 +75,14 @@ async function start() {
   await db.init();
   await rental.ready();
   app.listen(PORT, () => {
-    console.log(`CashArrow production server listening on port ${PORT}`);
+    console.log(`AVEILOT production server listening on port ${PORT}`);
   });
   startRentalExpiryWorker();
 }
 
 if (require.main === module) {
   start().catch(error => {
-    console.error("CashArrow startup failed:", error);
+    console.error("AVEILOT startup failed:", error);
     process.exit(1);
   });
 }
