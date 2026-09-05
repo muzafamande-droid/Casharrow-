@@ -84,11 +84,24 @@ router.post("/withdrawals", auth, async (req, res) => {
   const idempotencyKey = req.headers["idempotency-key"] ? String(req.headers["idempotency-key"]).trim() : null;
 
   if (!amount) return res.status(400).json({ success: false, message: "Invalid withdrawal amount" });
-  if (!account) return res.status(400).json({ success: false, message: "Account is required" });
+  if (!["MTN", "AIRTEL"].includes(network)) return res.status(400).json({ success: false, message: "Please select MTN or Airtel" });
+  if (!account || account.length > 64) return res.status(400).json({ success: false, message: "Enter a valid Mobile Money number" });
 
   try {
     const withdrawal = await financial.createWithdrawal({ userId: req.user.id, amount, account, network, idempotencyKey });
-    res.status(201).json({ success: true, message: "Withdrawal request submitted", withdrawal });
+    res.status(201).json({
+      success: true,
+      message: "Withdrawal request submitted",
+      withdrawal: {
+        id: withdrawal.id,
+        amount: withdrawal.amount,
+        account: withdrawal.account,
+        network: withdrawal.network,
+        status: withdrawal.status,
+        date: withdrawal.date,
+        payout: withdrawal.payout
+      }
+    });
   } catch (error) {
     console.error("PG withdrawal failed:", error);
     res.status(error.message.includes("Insufficient") ? 409 : 400).json({ success: false, message: error.message });
