@@ -8,6 +8,24 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is not configured");
 
+function normalizeUgandanPhone(value) {
+  const raw = String(value || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("256")) return digits;
+  if (digits.startsWith("0") && digits.length === 10) return "256" + digits.slice(1);
+  return digits;
+}
+
+function phoneCandidates(value) {
+  const raw = String(value || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  const normalized = normalizeUgandanPhone(value);
+  const candidates = new Set([raw, digits, normalized]);
+  if (normalized.startsWith("256") && normalized.length === 12) candidates.add("0" + normalized.slice(3));
+  return [...candidates].filter(Boolean);
+}
+
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) return res.status(401).json({ success: false, message: "Authentication required" });
@@ -26,13 +44,14 @@ router.post("/register", async (req, res) => {
   if (String(password).length < 6) return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
   if (password !== confirmPassword) return res.status(400).json({ success: false, message: "Passwords do not match" });
 
-  const normalizedPhone = String(phone).trim();
+  const normalizedPhone = normalizeUgandanPhone(phone);
   const normalizedName = String(name).trim();
   const normalizedReferralCode = referralCode ? String(referralCode).trim().toUpperCase() : null;
+  if (!normalizedPhone || normalizedPhone.length < 10) return res.status(400).json({ success: false, message: "Enter a valid Ugandan phone number" });
 
   try {
     const result = await db.transaction(async client => {
-      const existing = await client.query("SELECT id FROM users WHERE phone = $1", [normalizedPhone]);
+      const existing = await client.query("SELECT id FROM users WHERE phone = ANY($1::text[])", [phoneCandidates(phone)]);
       if (existing.rowCount) return { error: "An account with this phone already exists", status: 409 };
 
       let referrer = null;
@@ -74,7 +93,7 @@ router.post("/register", async (req, res) => {
     return res.status(201).json({ success: true, message: "Account created successfully", userId: result.userId, referralCode: result.referralCode });
   } catch (error) {
     console.error("PostgreSQL registration failed:", error);
-    if (error.code === "23505") return res.status(409).json({ success: false, message: "An account with this phone or referral code already exists" });
+    if (error.code === "23505") return res.status(409).json({ success: false, message: "An account with this phone already exists" });
     return res.status(500).json({ success: false, message: "Registration failed" });
   }
 });
@@ -83,7 +102,7 @@ router.post("/login", async (req, res) => {
   const { phone, password } = req.body;
   if (!phone || !password) return res.status(400).json({ success: false, message: "Phone and password are required" });
   try {
-    const result = await db.query("SELECT id, name, phone, password, role, balance, wallet, referral_code FROM users WHERE phone = $1", [String(phone).trim()]);
+    const result = await db.query("SELECT id, name, phone, password, role, balance, wallet, referral_code FROM users WHERE phone = ANY($1::text[])", [phoneCandidates(phone)]);
     const user = result.rows[0];
     if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ success: false, message: "Invalid phone or password" });
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
