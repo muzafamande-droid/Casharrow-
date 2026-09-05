@@ -18,21 +18,20 @@ test("concurrent first-rental attempts can create only one referral commission",
 
   const referrerPhone = uniquePhone("07");
   const referredPhone = uniquePhone("08");
-  const passwordHash = "test-hash";
 
   try {
     const referrer = (await pgDb.query(
       `INSERT INTO users (id, phone, name, password, role, referral_code)
-       VALUES (nextval('casharrow_users_id_seq'), $1, 'Concurrency Referrer', $2, 'user', $3)
+       VALUES (nextval('casharrow_users_id_seq'), $1, 'Concurrency Referrer', 'test-hash', 'user', $2)
        RETURNING id`,
-      [referrerPhone, passwordHash, `TEST${Date.now()}`]
+      [referrerPhone, `TEST${Date.now()}`]
     )).rows[0];
 
     const referred = (await pgDb.query(
       `INSERT INTO users (id, phone, name, password, role, balance, wallet, referred_by, referral_code)
-       VALUES (nextval('casharrow_users_id_seq'), $1, 'Concurrency Referred', $2, 'user', 100000, 100000, $3, $4)
+       VALUES (nextval('casharrow_users_id_seq'), $1, 'Concurrency Referred', 'test-hash', 'user', 100000, 100000, $2, $3)
        RETURNING id`,
-      [referredPhone, passwordHash, referrer.id, `TEST${Date.now()}R`]
+      [referredPhone, referrer.id, `TEST${Date.now()}R`]
     )).rows[0];
 
     const product = (await pgDb.query("SELECT id FROM products WHERE code = 'A1'")).rows[0];
@@ -73,7 +72,8 @@ test("concurrent first-rental attempts can create only one referral commission",
       await pgDb.query("DELETE FROM rentals WHERE user_id = ANY($1::bigint[])", [userIds]);
       await pgDb.query("DELETE FROM users WHERE id = ANY($1::bigint[])", [userIds]);
     }
-
-    await pgDb.close();
   }
+
+  // Always close the shared pool so this standalone test can terminate cleanly.
+  await pgDb.close();
 });
