@@ -1,9 +1,23 @@
 const db = require("./database-pg");
 
+const WITHDRAWAL_FEE_RATE = 0.14;
+
 function money(value, field) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) throw new Error(`${field} must be a positive amount`);
   return n;
+}
+
+function withdrawalQuote(amount) {
+  const gross = money(amount, "Withdrawal amount");
+  const fee = Math.round(gross * WITHDRAWAL_FEE_RATE * 100) / 100;
+  const payout = Math.round((gross - fee) * 100) / 100;
+  return { amount: gross, fee, payout, feeRate: WITHDRAWAL_FEE_RATE };
+}
+
+function withWithdrawalQuote(withdrawal) {
+  if (!withdrawal) return withdrawal;
+  return { ...withdrawal, ...withdrawalQuote(withdrawal.amount) };
 }
 
 async function getUser(client, userId, forUpdate = false) {
@@ -130,7 +144,7 @@ async function failDeposit(depositId) {
 }
 
 async function createWithdrawal({ userId, amount, account, network = null, idempotencyKey = null }) {
-  const value = money(amount, "Withdrawal amount");
+  const quote = withdrawalQuote(amount);
   return db.transaction(async client => {
     const user = await getUser(client, userId, true);
     if (!user) throw new Error("User not found");
@@ -140,15 +154,15 @@ async function createWithdrawal({ userId, amount, account, network = null, idemp
         "SELECT * FROM withdrawals WHERE idempotency_key = $1 AND user_id = $2 LIMIT 1",
         [idempotencyKey, userId]
       );
-      if (existing.rowCount) return existing.rows[0];
+      if (existing.rowCount) return withWithdrawalQuote(existing.rows[0]);
     }
 
     const available = Number(user.balance) - Number(user.reserved_balance || 0);
-    if (available < value || Number(user.wallet) < value) throw new Error("Insufficient available balance");
+    if (available < quote.amount || Number(user.wallet) < quote.amount) throw new Error("Insufficient available balance");
 
     await client.query(
       "UPDATE users SET reserved_balance = reserved_balance + $1 WHERE id = $2",
-      [value, userId]
+      [quote.amount, userId]
     );
 
     const result = await client.query(
@@ -157,9 +171,9 @@ async function createWithdrawal({ userId, amount, account, network = null, idemp
        VALUES
         (nextval('casharrow_withdrawals_id_seq'), $1, $2, $3, $4, 'pending', $5, NOW())
        RETURNING *`,
-      [userId, value, String(account || "").trim(), network ? String(network).trim().toUpperCase() : null, idempotencyKey]
+      [userId, quote.amount, String(account || "").trim(), network ? String(network).trim().toUpperCase() : null, idempotencyKey]
     );
-    return result.rows[0];
+    return withWithdrawalQuote(result.rows[0]);
   });
 }
 
@@ -171,7 +185,7 @@ async function approveWithdrawal(withdrawalId, { providerReference = null } = {}
     const result = await client.query("SELECT * FROM withdrawals WHERE id = $1 FOR UPDATE", [withdrawalId]);
     const withdrawal = result.rows[0];
     if (!withdrawal) throw new Error("Withdrawal not found");
-    if (withdrawal.status === "approved") return withdrawal;
+    if (withdrawal.status === "approved") return withWithdrawalQuote(withdrawal);
     if (withdrawal.status !== "pending") throw new Error(`Withdrawal is already ${withdrawal.status}`);
     if (withdrawal.provider_reference && withdrawal.provider_reference !== payoutReference) {
       throw new Error("Provider reference does not match withdrawal");
@@ -210,7 +224,7 @@ async function approveWithdrawal(withdrawalId, { providerReference = null } = {}
        RETURNING *`,
       [withdrawalId, payoutReference]
     );
-    return updated.rows[0];
+    return withWithdrawalQuote(updated.rows[0]);
   });
 }
 
@@ -219,7 +233,7 @@ async function rejectWithdrawal(withdrawalId) {
     const result = await client.query("SELECT * FROM withdrawals WHERE id = $1 FOR UPDATE", [withdrawalId]);
     const withdrawal = result.rows[0];
     if (!withdrawal) throw new Error("Withdrawal not found");
-    if (withdrawal.status === "rejected") return withdrawal;
+    if (withdrawal.status === "rejected") return withWithdrawalQuote(withdrawal);
     if (withdrawal.status !== "pending") throw new Error(`Withdrawal is already ${withdrawal.status}`);
 
     await client.query(
@@ -230,11 +244,13 @@ async function rejectWithdrawal(withdrawalId) {
       "UPDATE withdrawals SET status = 'rejected', approved_at = NOW() WHERE id = $1 AND status = 'pending' RETURNING *",
       [withdrawalId]
     );
-    return updated.rows[0];
+    return withWithdrawalQuote(updated.rows[0]);
   });
 }
 
 module.exports = {
+  WITHDRAWAL_FEE_RATE,
+  withdrawalQuote,
   getWallet,
   recordTransaction,
   creditWallet,
