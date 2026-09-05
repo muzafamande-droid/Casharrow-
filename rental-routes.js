@@ -6,6 +6,20 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 const REFERRAL_COMMISSION_RATE = 0.10;
 
+function personalWelcomeBonus(fee) {
+  if (fee >= 1000000) return 100000;
+  if (fee >= 900000) return 85000;
+  if (fee >= 800000) return 75000;
+  if (fee >= 700000) return 65000;
+  if (fee >= 600000) return 55000;
+  if (fee >= 500000) return 45000;
+  if (fee >= 400000) return 35000;
+  if (fee >= 300000) return 25000;
+  if (fee >= 200000) return 15000;
+  if (fee >= 100000) return 7000;
+  return 0;
+}
+
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is not configured");
 
 const RENTAL_POLICY = {
@@ -151,6 +165,9 @@ async function createRental({ userId, productId }) {
 
     const priorRental = await client.query("SELECT id FROM rentals WHERE user_id = $1 LIMIT 1", [userId]);
     const isFirstRental = priorRental.rowCount === 0;
+    const priorWelcomeBonus = await client.query("SELECT id FROM transactions WHERE user_id = $1 AND type = 'Personal Welcome Bonus' LIMIT 1", [userId]);
+    const welcomeBonusAlreadyPaid = priorWelcomeBonus.rowCount > 0;
+    const welcomeBonus = !welcomeBonusAlreadyPaid ? personalWelcomeBonus(fee) : 0;
 
     const start = new Date();
     const end = new Date(start.getTime() + Number(product.rental_days) * 86400000);
@@ -167,6 +184,22 @@ async function createRental({ userId, productId }) {
       INSERT INTO transactions (id, user_id, type, amount, reference, date)
       VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Rental Fee', $2, $3, NOW())
     `, [userId, -fee, `rental:${rentalId}`]);
+
+    if (welcomeBonus > 0) {
+      await client.query(`
+        UPDATE users
+        SET balance = balance + $1, wallet = wallet + $1
+        WHERE id = $2
+      `, [welcomeBonus, userId]);
+      await client.query(`
+        INSERT INTO transactions (id, user_id, type, amount, reference, date)
+        VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Personal Welcome Bonus', $2, $3, NOW())
+      `, [userId, welcomeBonus, `welcome-bonus:rental:${rentalId}`]);
+      await client.query(`
+        INSERT INTO rewards (id, user_id, title, amount, claimed)
+        VALUES (nextval('casharrow_rewards_id_seq'), $1, 'Personal Welcome Bonus', $2, 1)
+      `, [userId, welcomeBonus]);
+    }
 
     let referralCommission = 0;
     if (isFirstRental && user.referred_by && Number(user.referred_by) !== Number(userId)) {
@@ -196,7 +229,7 @@ async function createRental({ userId, productId }) {
       }
     }
 
-    return { ok: true, rentalId, endAt: rental.rows[0].end_at, referralCommission };
+    return { ok: true, rentalId, endAt: rental.rows[0].end_at, referralCommission, welcomeBonus };
   });
 }
 
@@ -265,7 +298,7 @@ router.post("/rentals", authenticate, async (req, res) => {
   try {
     const result = await createRental({ userId: req.rentalUser.id, productId });
     if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
-    res.status(201).json({ success: true, message: "Rental created successfully", rentalId: result.rentalId, endAt: result.endAt, referralCommission: result.referralCommission });
+    res.status(201).json({ success: true, message: "Rental created successfully", rentalId: result.rentalId, endAt: result.endAt, referralCommission: result.referralCommission, welcomeBonus: result.welcomeBonus });
   } catch (error) {
     console.error("Rental creation failed:", error);
     res.status(500).json({ success: false, message: "Unable to create rental" });
