@@ -77,6 +77,9 @@ test("deposit idempotency and approval credit the wallet exactly once", async ()
 test("withdrawal reserves funds and rejection releases the reservation", async () => {
   const withdrawal = await financial.createWithdrawal({ userId, amount: 25000, account: "256700000001", network: "AIRTEL", idempotencyKey: `withdrawal-reject-${Date.now()}` });
   assert.equal(withdrawal.status, "pending");
+  assert.equal(withdrawal.feeRate, 0.14);
+  assert.equal(Number(withdrawal.fee), 3500);
+  assert.equal(Number(withdrawal.payout), 21500);
 
   let user = (await pgDb.query("SELECT balance, wallet, reserved_balance FROM users WHERE id = $1", [userId])).rows[0];
   assert.equal(Number(user.balance), 150000);
@@ -92,6 +95,18 @@ test("withdrawal reserves funds and rejection releases the reservation", async (
   assert.equal(Number(user.balance), 150000);
   assert.equal(Number(user.wallet), 150000);
   assert.equal(Number(user.reserved_balance), 0);
+});
+
+test("withdrawal quote applies 14 percent and pays the user the net amount", async () => {
+  const quote = financial.withdrawalQuote(50000);
+  assert.equal(quote.feeRate, 0.14);
+  assert.equal(quote.amount, 50000);
+  assert.equal(quote.fee, 7000);
+  assert.equal(quote.payout, 43000);
+
+  const quote30k = financial.withdrawalQuote(30000);
+  assert.equal(quote30k.fee, 4200);
+  assert.equal(quote30k.payout, 25800);
 });
 
 test("approved withdrawal requires a payout provider reference", async () => {
@@ -114,10 +129,15 @@ test("approved withdrawal requires a payout provider reference", async () => {
   await financial.rejectWithdrawal(withdrawal.id);
 });
 
-test("approved withdrawal debits balance once and clears reservation", async () => {
+test("approved withdrawal debits the gross amount once and reports the 14 percent net payout", async () => {
   const withdrawal = await financial.createWithdrawal({ userId, amount: 40000, account: "256700000001", network: "MTN", idempotencyKey: `withdrawal-approve-${Date.now()}` });
+  assert.equal(Number(withdrawal.fee), 5600);
+  assert.equal(Number(withdrawal.payout), 34400);
+
   const approved = await financial.approveWithdrawal(withdrawal.id, { providerReference: `withdraw-provider-${Date.now()}` });
   assert.equal(approved.status, "approved");
+  assert.equal(Number(approved.fee), 5600);
+  assert.equal(Number(approved.payout), 34400);
   assert.equal((await financial.approveWithdrawal(withdrawal.id, { providerReference: approved.provider_reference })).status, "approved");
 
   const user = (await pgDb.query("SELECT balance, wallet, reserved_balance FROM users WHERE id = $1", [userId])).rows[0];
@@ -160,5 +180,7 @@ test("admin money endpoints enforce authentication and admin role", async () => 
 
   const withdrawalApproved = await post(`/api/admin/withdrawals/${withdrawal.id}/approve`, { providerReference: `admin-withdraw-provider-${Date.now()}` }, tokenFor(999999999, "admin"));
   assert.equal(withdrawalApproved.status, 200);
-  assert.equal((await withdrawalApproved.json()).withdrawal.status, "approved");
+  const withdrawalBody = await withdrawalApproved.json();
+  assert.equal(withdrawalBody.withdrawal.status, "approved");
+  assert.equal(Number(withdrawalBody.withdrawal.payout), 4300);
 });
