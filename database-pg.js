@@ -118,9 +118,12 @@ async function init() {
     CREATE TABLE IF NOT EXISTS referral_rewards (
       id BIGINT PRIMARY KEY,
       referrer_id BIGINT NOT NULL REFERENCES users(id),
-      referred_user_id BIGINT NOT NULL UNIQUE REFERENCES users(id),
+      referred_user_id BIGINT NOT NULL REFERENCES users(id),
       amount NUMERIC(18,2) NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      rental_id BIGINT REFERENCES rentals(id),
+      level INTEGER,
+      commission_rate NUMERIC(12,10)
     );
 
     CREATE SEQUENCE IF NOT EXISTS casharrow_users_id_seq;
@@ -148,6 +151,13 @@ async function init() {
   await query("ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS idempotency_key TEXT");
   await query("ALTER TABLE deposits ADD COLUMN IF NOT EXISTS provider_reference TEXT");
   await query("ALTER TABLE deposits ADD COLUMN IF NOT EXISTS idempotency_key TEXT");
+  await query("ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS rental_id BIGINT REFERENCES rentals(id)");
+  await query("ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS level INTEGER");
+  await query("ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(12,10)");
+  await query("ALTER TABLE referral_rewards DROP CONSTRAINT IF EXISTS referral_rewards_referred_user_id_key");
+  await query("DROP INDEX IF EXISTS uq_referral_reward_rental");
+  await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_reward_rental_referrer_level ON referral_rewards(rental_id, referrer_id, level) WHERE rental_id IS NOT NULL AND level IS NOT NULL");
+  await query("CREATE INDEX IF NOT EXISTS idx_referral_rewards_rental ON referral_rewards(rental_id)");
 
   for (const table of ["users", "tasks", "rewards", "transactions", "withdrawals", "deposits", "team", "referral_rewards"]) {
     const moneyColumns = {
