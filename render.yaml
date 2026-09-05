@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: casharrow
+    name: aveilot
     runtime: node
     plan: free
     buildCommand: npm install
