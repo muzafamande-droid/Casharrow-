@@ -26,7 +26,7 @@ app.get("/member.html", (req, res) => {
     const file = path.join(__dirname, "public", "member.html");
     let html = fs.readFileSync(file, "utf8");
     html = html.replaceAll("CashArrow", "AVEILOT");
-    const scripts = '<script src="/rental-catalog.js?v=photos7"></script><script src="/aveilot-machine-catalog-fix.js?v=3"></script><script src="/aveilot-real-machine-photos.js?v=2"></script>';
+    const scripts = '<script src="/rental-catalog.js?v=photos7"></script><script src="/aveilot-machine-catalog-fix.js?v=3"></script><script src="/aveilot-real-machine-photos.js?v=2"></script><script src="/aveilot-withdrawal-fee.js?v=1"></script>';
     html = html.replace("</body>", `${scripts}</body>`);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.set("Pragma", "no-cache");
@@ -61,7 +61,7 @@ app.use("/api", adminProducts.router);
 app.get("/", (req, res) => {
   const file = path.join(__dirname, "public", "index.html");
   let html = fs.readFileSync(file, "utf8");
-  const scripts = '<script src="/member-dashboard-v2.js?v=14"></script><script src="/member-dashboard-boot.js?v=3"></script><script src="/casharrow-ui-fixes.js?v=5"></script><script src="/rental-catalog.js?v=photos7"></script><script src="/aveilot-machine-catalog-fix.js?v=3"></script><script src="/aveilot-real-machine-photos.js?v=2"></script><script src="/casharrow-auth-ux.js?v=1"></script>';
+  const scripts = '<script src="/member-dashboard-v2.js?v=14"></script><script src="/member-dashboard-boot.js?v=3"></script><script src="/casharrow-ui-fixes.js?v=5"></script><script src="/rental-catalog.js?v=photos7"></script><script src="/aveilot-machine-catalog-fix.js?v=3"></script><script src="/aveilot-real-machine-photos.js?v=2"></script><script src="/casharrow-auth-ux.js?v=1"></script><script src="/aveilot-withdrawal-fee.js?v=1"></script>';
   html = html.replace("</body>", `${scripts}</body>`);
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.set("Pragma", "no-cache");
