@@ -1,6 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("node:crypto");
 const db = require("./database-pg");
 
 const router = express.Router();
@@ -24,6 +25,19 @@ function phoneCandidates(value) {
   const candidates = new Set([raw, digits, normalized]);
   if (normalized.startsWith("256") && normalized.length === 12) candidates.add("0" + normalized.slice(3));
   return [...candidates].filter(Boolean);
+}
+
+async function createReferralCode(client) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const bytes = crypto.randomBytes(8);
+    let suffix = "";
+    for (const byte of bytes) suffix += alphabet[byte % alphabet.length];
+    const code = `CA${suffix}`;
+    const exists = await client.query("SELECT 1 FROM users WHERE referral_code = $1 LIMIT 1", [code]);
+    if (!exists.rowCount) return code;
+  }
+  throw new Error("Unable to generate a unique referral code");
 }
 
 function authenticateToken(req, res, next) {
@@ -61,15 +75,14 @@ router.post("/register", async (req, res) => {
       }
 
       const hash = await bcrypt.hash(password, 12);
+      const newReferralCode = await createReferralCode(client);
       const inserted = await client.query(`
         INSERT INTO users (id, phone, name, password, role, balance, wallet, reserved_balance, vip, referral_code, referred_by)
-        VALUES (nextval('casharrow_users_id_seq'), $1, $2, $3, 'user', 0, 0, 0, 1, NULL, $4)
+        VALUES (nextval('casharrow_users_id_seq'), $1, $2, $3, 'user', 0, 0, 0, 1, $4, $5)
         RETURNING id, name, phone, role, balance, wallet, referral_code
-      `, [normalizedPhone, normalizedName, hash, referrer ? referrer.id : null]);
+      `, [normalizedPhone, normalizedName, hash, newReferralCode, referrer ? referrer.id : null]);
 
       const user = inserted.rows[0];
-      const newReferralCode = "CA" + String(user.id).padStart(6, "0");
-      await client.query("UPDATE users SET referral_code = $1 WHERE id = $2", [newReferralCode, user.id]);
 
       await client.query(`
         INSERT INTO tasks (id, user_id, title, reward, done)
