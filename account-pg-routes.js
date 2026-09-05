@@ -92,11 +92,11 @@ router.post("/register", async (req, res) => {
           (nextval('casharrow_tasks_id_seq'), $1, 'Share app', 200, 0)
       `, [user.id]);
 
+      // Signup itself earns UGX 0. Purchase-based bonuses are handled by the rental flow.
       await client.query(`
         INSERT INTO rewards (id, user_id, title, amount, claimed)
         VALUES
-          (nextval('casharrow_rewards_id_seq'), $1, 'Welcome', 0, 1),
-          (nextval('casharrow_rewards_id_seq'), $1, 'VIP Bonus', 500, 0)
+          (nextval('casharrow_rewards_id_seq'), $1, 'Welcome', 0, 1)
       `, [user.id]);
 
       return { userId: Number(user.id), referralCode: newReferralCode, referredBy: referrer ? Number(referrer.id) : null };
