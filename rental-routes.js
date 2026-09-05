@@ -4,7 +4,7 @@ const db = require("./database-pg");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
-const REFERRAL_COMMISSION_RATE = 0.10;
+const REFERRAL_RATES = [0.20, 0.0666666667, 0.0333333333];
 
 function personalWelcomeBonus(fee) {
   if (fee >= 1000000) return 100000;
@@ -18,6 +18,12 @@ function personalWelcomeBonus(fee) {
   if (fee >= 200000) return 15000;
   if (fee >= 100000) return 7000;
   return 0;
+}
+
+function referralCommission(fee, level) {
+  const rate = REFERRAL_RATES[level - 1];
+  if (!rate) return 0;
+  return Math.round(fee * rate * 100) / 100;
 }
 
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is not configured");
@@ -95,13 +101,19 @@ async function ensurePgSchema() {
       completed_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS rental_id BIGINT REFERENCES rentals(id);
-    CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_reward_rental ON referral_rewards(rental_id) WHERE rental_id IS NOT NULL;
-    CREATE SEQUENCE IF NOT EXISTS casharrow_products_id_seq;
-    CREATE SEQUENCE IF NOT EXISTS casharrow_rentals_id_seq;
-    CREATE INDEX IF NOT EXISTS idx_rentals_user ON rentals(user_id);
-    CREATE INDEX IF NOT EXISTS idx_rentals_status_end ON rentals(status, end_at);
   `);
+
+  await db.query("ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS rental_id BIGINT REFERENCES rentals(id)");
+  await db.query("ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS level INTEGER");
+  await db.query("ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(12,10)");
+  await db.query("ALTER TABLE referral_rewards DROP CONSTRAINT IF EXISTS referral_rewards_referred_user_id_key");
+  await db.query("DROP INDEX IF EXISTS uq_referral_reward_rental");
+  await db.query("CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_reward_rental_referrer_level ON referral_rewards(rental_id, referrer_id, level) WHERE rental_id IS NOT NULL AND level IS NOT NULL");
+  await db.query("CREATE INDEX IF NOT EXISTS idx_referral_rewards_rental ON referral_rewards(rental_id)");
+  await db.query("CREATE SEQUENCE IF NOT EXISTS casharrow_products_id_seq");
+  await db.query("CREATE SEQUENCE IF NOT EXISTS casharrow_rentals_id_seq");
+  await db.query("CREATE INDEX IF NOT EXISTS idx_rentals_user ON rentals(user_id)");
+  await db.query("CREATE INDEX IF NOT EXISTS idx_rentals_status_end ON rentals(status, end_at)");
 
   for (const [series, terms] of Object.entries(RENTAL_POLICY)) {
     for (let i = 0; i < terms.length; i += 1) {
@@ -163,8 +175,6 @@ async function createRental({ userId, productId }) {
     const wallet = Number(user.wallet);
     if (balance < fee || wallet < fee) return { status: 400, message: "Insufficient balance" };
 
-    const priorRental = await client.query("SELECT id FROM rentals WHERE user_id = $1 LIMIT 1", [userId]);
-    const isFirstRental = priorRental.rowCount === 0;
     const priorWelcomeBonus = await client.query("SELECT id FROM transactions WHERE user_id = $1 AND type = 'Personal Welcome Bonus' LIMIT 1", [userId]);
     const welcomeBonusAlreadyPaid = priorWelcomeBonus.rowCount > 0;
     const welcomeBonus = !welcomeBonusAlreadyPaid ? personalWelcomeBonus(fee) : 0;
@@ -187,9 +197,7 @@ async function createRental({ userId, productId }) {
 
     if (welcomeBonus > 0) {
       await client.query(`
-        UPDATE users
-        SET balance = balance + $1, wallet = wallet + $1
-        WHERE id = $2
+        UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2
       `, [welcomeBonus, userId]);
       await client.query(`
         INSERT INTO transactions (id, user_id, type, amount, reference, date)
@@ -201,35 +209,52 @@ async function createRental({ userId, productId }) {
       `, [userId, welcomeBonus]);
     }
 
-    let referralCommission = 0;
-    if (isFirstRental && user.referred_by && Number(user.referred_by) !== Number(userId)) {
-      const commission = Math.round(fee * REFERRAL_COMMISSION_RATE * 100) / 100;
+    const referralCommissions = [];
+    const seenUsers = new Set([Number(userId)]);
+    let ancestorId = user.referred_by ? Number(user.referred_by) : null;
+
+    for (let level = 1; level <= REFERRAL_RATES.length && ancestorId; level += 1) {
+      if (!Number.isInteger(ancestorId) || seenUsers.has(ancestorId)) break;
+      seenUsers.add(ancestorId);
+
+      const ancestorResult = await client.query("SELECT id, name, referred_by FROM users WHERE id = $1 FOR UPDATE", [ancestorId]);
+      if (!ancestorResult.rowCount) break;
+      const ancestor = ancestorResult.rows[0];
+      const commission = referralCommission(fee, level);
+      const rate = REFERRAL_RATES[level - 1];
+
       const reward = await client.query(`
-        INSERT INTO referral_rewards (id, referrer_id, referred_user_id, amount, rental_id)
-        VALUES (nextval('casharrow_referral_rewards_id_seq'), $1, $2, $3, $4)
-        ON CONFLICT (referred_user_id) DO NOTHING
+        INSERT INTO referral_rewards (id, referrer_id, referred_user_id, amount, rental_id, level, commission_rate)
+        VALUES (nextval('casharrow_referral_rewards_id_seq'), $1, $2, $3, $4, $5, $6)
+        ON CONFLICT (rental_id, referrer_id, level) DO NOTHING
         RETURNING id
-      `, [user.referred_by, userId, commission, rentalId]);
+      `, [ancestor.id, userId, commission, rentalId, level, rate]);
 
       if (reward.rowCount) {
-        referralCommission = commission;
-        await client.query(`
-          INSERT INTO team (id, user_id, member_name, earn)
-          VALUES (nextval('casharrow_team_id_seq'), $1, (SELECT name FROM users WHERE id = $2), $3)
-        `, [user.referred_by, userId, commission]);
-        await client.query(`
-          UPDATE users
-          SET balance = balance + $1, wallet = wallet + $1
-          WHERE id = $2
-        `, [commission, user.referred_by]);
+        await client.query("UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2", [commission, ancestor.id]);
         await client.query(`
           INSERT INTO transactions (id, user_id, type, amount, reference, date)
-          VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Referral Commission', $2, $3, NOW())
-        `, [user.referred_by, commission, `referral-rental:${rentalId}`]);
+          VALUES (nextval('casharrow_transactions_id_seq'), $1, $2, $3, $4, NOW())
+        `, [ancestor.id, `Referral Commission L${level}`, commission, `referral-rental:${rentalId}:L${level}`]);
+        await client.query(`
+          INSERT INTO team (id, user_id, member_name, earn)
+          VALUES (nextval('casharrow_team_id_seq'), $1, $2, $3)
+        `, [ancestor.id, ancestor.name, commission]);
+        referralCommissions.push({ level, amount: commission });
       }
+
+      ancestorId = ancestor.referred_by ? Number(ancestor.referred_by) : null;
     }
 
-    return { ok: true, rentalId, endAt: rental.rows[0].end_at, referralCommission, welcomeBonus };
+    const referralCommissionTotal = referralCommissions.reduce((sum, item) => sum + item.amount, 0);
+    return {
+      ok: true,
+      rentalId,
+      endAt: rental.rows[0].end_at,
+      referralCommission: Math.round(referralCommissionTotal * 100) / 100,
+      referralCommissions,
+      welcomeBonus
+    };
   });
 }
 
@@ -298,7 +323,15 @@ router.post("/rentals", authenticate, async (req, res) => {
   try {
     const result = await createRental({ userId: req.rentalUser.id, productId });
     if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
-    res.status(201).json({ success: true, message: "Rental created successfully", rentalId: result.rentalId, endAt: result.endAt, referralCommission: result.referralCommission, welcomeBonus: result.welcomeBonus });
+    res.status(201).json({
+      success: true,
+      message: "Rental created successfully",
+      rentalId: result.rentalId,
+      endAt: result.endAt,
+      referralCommission: result.referralCommission,
+      referralCommissions: result.referralCommissions,
+      welcomeBonus: result.welcomeBonus
+    });
   } catch (error) {
     console.error("Rental creation failed:", error);
     res.status(500).json({ success: false, message: "Unable to create rental" });
@@ -318,4 +351,4 @@ router.post("/rentals/:id/complete", authenticate, async (req, res) => {
   }
 });
 
-module.exports = { router, ready: ensurePgSchema };
+module.exports = { router, ready: ensurePgSchema, REFERRAL_RATES, referralCommission };
