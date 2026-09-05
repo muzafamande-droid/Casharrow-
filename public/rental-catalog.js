@@ -36,7 +36,10 @@ async function loadRentalCatalog() {
       const product = state.products.find((item) => String(item.id) === String(button.dataset.rentProduct));
       if (product) openRentalDetails(product);
     }));
-  } catch (error) { console.error("Unable to load AVEILOT rental catalog", error); }
+  } catch (error) {
+    console.error("Unable to load AVEILOT rental catalog", error);
+    host.innerHTML = '<div class="empty">Unable to load machines. Please try again.</div>';
+  }
 }
 
 function openRentalDetails(product) {
@@ -48,5 +51,17 @@ function openRentalDetails(product) {
     .then(async response => { const payload=await response.json().catch(()=>({})); if(!response.ok) throw new Error(payload.error || payload.message || "Rental could not be completed"); alert(`Machine rented successfully. Income: ${money(income)} after ${days} days.`); window.location.reload(); })
     .catch(error => alert(error.message));
 }
+
+window.cashArrowOpenMachines = async function openMachines() {
+  const host = document.getElementById("machinesHost");
+  if (!host) return;
+  document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("open"));
+  document.querySelectorAll(".nav").forEach((nav) => nav.classList.remove("active"));
+  document.querySelector('[data-nav="machines"]')?.classList.add("active");
+  host.style.display = "block";
+  host.innerHTML = '<section class="panel open"><h2>🏭 AVEILOT Machines</h2><div id="rentalProducts" class="products-grid"><div class="loading">🏭 Loading machines…</div></div></section>';
+  await loadRentalCatalog();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadRentalCatalog); else loadRentalCatalog();
