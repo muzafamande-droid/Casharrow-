@@ -86,11 +86,32 @@ router.post("/register", async (req, res) => {
           (nextval('casharrow_rewards_id_seq'), $1, 'VIP Bonus', 500, 0)
       `, [user.id]);
 
-      return { userId: Number(user.id), referralCode: newReferralCode };
+      return { userId: Number(user.id), referralCode: newReferralCode, referredBy: referrer ? Number(referrer.id) : null };
     });
 
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
-    return res.status(201).json({ success: true, message: "Account created successfully", userId: result.userId, referralCode: result.referralCode });
+
+    const userResult = await db.query("SELECT id, name, phone, role, balance, wallet, referral_code FROM users WHERE id = $1", [result.userId]);
+    const user = userResult.rows[0];
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+
+    return res.status(201).json({
+      success: true,
+      message: "Account created successfully",
+      token,
+      user: {
+        id: Number(user.id),
+        name: user.name,
+        phone: user.phone,
+        role: user.role,
+        balance: Number(user.balance),
+        wallet: Number(user.wallet),
+        referralCode: user.referral_code
+      },
+      userId: result.userId,
+      referralCode: result.referralCode,
+      referredBy: result.referredBy
+    });
   } catch (error) {
     console.error("PostgreSQL registration failed:", error);
     if (error.code === "23505") return res.status(409).json({ success: false, message: "An account with this phone already exists" });
