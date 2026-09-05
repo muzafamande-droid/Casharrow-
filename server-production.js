@@ -21,13 +21,23 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "256kb" }));
 app.use(express.urlencoded({ extended: true, limit: "256kb" }));
 
+const AVEILOT_BRANDING_SCRIPT = `<script>(function(){
+  function clean(root){
+    const walker=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT);
+    const nodes=[];let n;while(n=walker.nextNode())nodes.push(n);
+    nodes.forEach(t=>{if(/CashArrow/i.test(t.nodeValue))t.nodeValue=t.nodeValue.replace(/CashArrow/gi,'AVEILOT')});
+  }
+  function start(){clean(document.body);new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{if(n.nodeType===1)clean(n)}))).observe(document.body,{childList:true,subtree:true})}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();</script>`;
+
 app.get("/member.html", (req, res) => {
   try {
     const file = path.join(__dirname, "public", "member.html");
     let html = fs.readFileSync(file, "utf8");
     html = html.replaceAll("CashArrow", "AVEILOT");
     const scripts = '<script src="/rental-catalog.js?v=photos7"></script><script src="/aveilot-machine-catalog-fix.js?v=3"></script><script src="/aveilot-real-machine-photos.js?v=2"></script><script src="/aveilot-withdrawal-fee.js?v=2"></script>';
-    html = html.replace("</body>", `${scripts}</body>`);
+    html = html.replace("</body>", `${scripts}${AVEILOT_BRANDING_SCRIPT}</body>`);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
@@ -62,7 +72,7 @@ app.get("/", (req, res) => {
   const file = path.join(__dirname, "public", "index.html");
   let html = fs.readFileSync(file, "utf8");
   const scripts = '<script src="/member-dashboard-v2.js?v=14"></script><script src="/member-dashboard-boot.js?v=3"></script><script src="/casharrow-ui-fixes.js?v=5"></script><script src="/rental-catalog.js?v=photos7"></script><script src="/aveilot-machine-catalog-fix.js?v=3"></script><script src="/aveilot-real-machine-photos.js?v=2"></script><script src="/casharrow-auth-ux.js?v=1"></script><script src="/aveilot-withdrawal-fee.js?v=2"></script>';
-  html = html.replace("</body>", `${scripts}</body>`);
+  html = html.replace("</body>", `${scripts}${AVEILOT_BRANDING_SCRIPT}</body>`);
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.set("Pragma", "no-cache");
   res.set("Expires", "0");
@@ -74,7 +84,7 @@ app.use((req, res) => res.status(404).json({ success: false, message: "Endpoint 
 async function start() {
   await db.init();
   await rental.ready();
-  app.listen(PORT, () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`AVEILOT production server listening on port ${PORT}`);
   });
   startRentalExpiryWorker();
