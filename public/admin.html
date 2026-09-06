@@ -1,222 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AVEILOT Admin</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;background:#f4f7fb;color:#172033;min-height:100vh}
-    header{background:linear-gradient(135deg,#06142f,#0a2c67,#087cff);color:white;padding:24px 20px}
-    header h1{font-size:25px} header p{margin-top:6px;opacity:.85;font-size:13px}
-    .container{max-width:760px;margin:auto;padding:20px 16px}
-    .card{background:white;border-radius:18px;padding:20px;margin-bottom:15px;box-shadow:0 4px 15px rgba(0,0,0,.06)}
-    .card h2{font-size:18px;margin-bottom:8px}
-    .status{color:#0a8f52;font-weight:bold}
-    button{border:0;padding:11px 15px;border-radius:12px;font-weight:bold;cursor:pointer;background:#0757e8;color:white}
-    button:disabled{opacity:.55;cursor:not-allowed}
-    .logout{background:#ffecec;color:#d93025}
-    .muted{color:#718096;font-size:13px}
-    .message{margin-top:10px;font-size:14px}
-    .deposit{border:1px solid #e3ebf7;border-radius:14px;padding:14px;margin-top:12px}
-    .deposit-row{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
-    .deposit-meta{font-size:13px;line-height:1.55;color:#536174;margin-top:7px}
-    .pending{color:#b26a00;font-weight:700}
-    .approved{color:#0a8f52;font-weight:700}
-    .rejected{color:#d93025;font-weight:700}
-    .empty{padding:12px 0;color:#718096;font-size:14px}
-    .action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-    .reject{background:#ffecec;color:#d93025}
-    .reference-input{width:100%;margin-top:10px;padding:11px 12px;border:1px solid #d6dfec;border-radius:10px;font:inherit;color:#172033;background:#fff}
-    .reference-input:focus{outline:2px solid #b9d4ff;border-color:#0757e8}
-    .reference-help{margin-top:6px;color:#718096;font-size:12px;line-height:1.45}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AVEILOT Admin Control Center</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;padding:0}body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f8fc;color:#172033;min-height:100vh}.top{background:linear-gradient(135deg,#087cff,#1646b5);color:#fff;padding:22px 18px 28px;box-shadow:0 8px 28px rgba(16,74,180,.18)}.topbar{max-width:1100px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;border-radius:13px;background:#fff;color:#087cff;display:grid;place-items:center;font-weight:900;font-size:22px;box-shadow:0 6px 18px rgba(0,0,0,.15)}h1{font-size:21px;margin:0} .sub{font-size:12px;opacity:.82;margin-top:3px}.logout{border:1px solid rgba(255,255,255,.35)!important;background:rgba(255,255,255,.12)!important;color:#fff!important;padding:10px 14px;border-radius:11px}.hero{max-width:1100px;margin:18px auto 0}.hero h2{margin:0;font-size:28px}.hero p{margin:7px 0 0;opacity:.86;font-size:14px}.container{max-width:1100px;margin:-10px auto 40px;padding:0 15px;position:relative}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}.card{background:#fff;border:1px solid #e5ebf3;border-radius:18px;padding:18px;box-shadow:0 5px 18px rgba(22,48,82,.055);margin-bottom:14px}.stat{min-height:108px}.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#738198;font-weight:800}.stat strong{display:block;font-size:25px;margin-top:8px}.section-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.section-title h3{margin:0;font-size:18px}.muted{color:#718096;font-size:13px;line-height:1.5}.status{color:#07864c;font-weight:800}.btn{border:0;border-radius:11px;padding:10px 14px;font-weight:800;background:#087cff;color:#fff;cursor:pointer}.btn:disabled{opacity:.55}.btn.light{background:#edf4ff;color:#0757e8}.btn.danger{background:#ffecec;color:#d93025}.message{margin-top:10px;font-size:13px}.deposit{border:1px solid #e4eaf2;border-radius:14px;padding:14px;margin-top:11px}.deposit-row{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.deposit-meta{font-size:13px;line-height:1.6;color:#536174;margin-top:7px}.pending{color:#b26a00;font-weight:800}.approved{color:#07864c;font-weight:800}.rejected{color:#d93025;font-weight:800}.empty{padding:12px 0;color:#718096;font-size:14px}.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.reference-input{width:100%;margin-top:10px;padding:11px 12px;border:1px solid #d6dfec;border-radius:10px;font:inherit}.reference-help{margin-top:6px;color:#718096;font-size:12px;line-height:1.45}.machine-editor{margin-top:12px}.machine-editor-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.machine-photo-preview{margin-top:12px;border:1px solid #e1e8f2;border-radius:14px;min-height:170px;background:#f5f8fc;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#718096;font-size:13px}.machine-photo-preview img{display:block;width:100%;height:220px;object-fit:contain}.machine-photo-input{position:absolute;left:-10000px;width:1px;height:1px;opacity:0}.machine-upload-button{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:10px 14px;border-radius:11px;background:#edf4ff;color:#0757e8;font-weight:800;margin-top:10px}.machine-remove-button{margin-top:10px}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}.hero h2{font-size:23px}}@media(max-width:480px){.grid{grid-template-columns:1fr}.top{padding-top:17px}.hero h2{font-size:22px}.machine-photo-preview{min-height:150px}.machine-photo-preview img{height:190px}.machine-upload-button{width:100%}}
+</style>
 </head>
 <body>
-<header>
-  <h1>👑 AVEILOT Admin Panel</h1>
-  <p>Private administration area</p>
-</header>
+<header class="top"><div class="topbar"><div class="brand"><div class="logo">A</div><div><h1>AVEILOT Admin</h1><div class="sub">Operations & platform control center</div></div></div><button class="logout" onclick="logout()">Log out</button></div><div class="hero"><h2>Control your AVEILOT platform.</h2><p>Manage machines, deposits, withdrawals and members from one secure workspace.</p></div></header>
 <main class="container">
-  <div class="card">
-    <h2>🔐 Security Status</h2>
-    <p class="status">Admin authentication active</p>
-  </div>
-
-  <div class="card">
-    <h2>👤 Administrator</h2>
-    <p id="adminInfo">Checking authorization...</p>
-  </div>
-
-  <div class="card">
-    <h2>📊 Dashboard</h2>
-    <p>👥 Total Users: <strong id="totalUsers">Loading...</strong></p>
-    <p>💰 Total Balance: <strong id="totalBalance">Loading...</strong></p>
-    <p>🎯 Total Tasks: <strong id="totalTasks">Loading...</strong></p>
-    <button onclick="loadDashboard()">🔄 Refresh</button>
-    <div id="dashboardMessage" class="message"></div>
-  </div>
-
-  <div class="card">
-    <h2>💳 Deposit Requests</h2>
-    <p class="muted">Only approve a deposit after you have verified the real Mobile Money payment.</p>
-    <button onclick="loadDeposits()" style="margin-top:12px">🔄 Refresh Deposits</button>
-    <div id="depositMessage" class="message"></div>
-    <div id="depositsList">Loading deposits...</div>
-  </div>
-
-  <div class="card">
-    <h2>📤 Withdrawal Requests</h2>
-    <p class="muted">Approve only after the actual Mobile Money payout has been sent and verified. A provider reference is required so every payout can be audited and cannot be reused.</p>
-    <button onclick="loadWithdrawals()" style="margin-top:12px">🔄 Refresh Withdrawals</button>
-    <div id="withdrawalMessage" class="message"></div>
-    <div id="withdrawalsList">Loading withdrawals...</div>
-  </div>
-
-  <div class="card">
-    <h2>👥 Users</h2>
-    <button onclick="loadUsers()">🔄 Refresh Users</button>
-    <div id="usersMessage" class="message"></div>
-    <div id="usersList">Loading users...</div>
-  </div>
-
-  <div class="card">
-    <button class="logout" onclick="logout()">Logout</button>
-    <div id="message" class="message"></div>
-  </div>
+<div class="grid"><div class="card stat"><div class="eyebrow">Platform</div><strong class="status">Online</strong><div class="muted">Admin authentication active</div></div><div class="card stat"><div class="eyebrow">Administrator</div><strong id="adminInfo">Checking...</strong><div class="muted">Authorized control account</div></div><div class="card stat"><div class="eyebrow">Users</div><strong id="totalUsers">—</strong><div class="muted">Registered members</div></div></div>
+<section class="card"><div class="section-title"><div><h3>📊 Platform overview</h3><div class="muted">Live account and task totals.</div></div><button class="btn light" onclick="loadDashboard()">Refresh</button></div><div class="grid" style="margin-top:12px;margin-bottom:0"><div class="card stat"><div class="eyebrow">Total balance</div><strong id="totalBalance">Loading...</strong></div><div class="card stat"><div class="eyebrow">Total tasks</div><strong id="totalTasks">Loading...</strong></div><div class="card stat"><div class="eyebrow">System</div><strong>AVEILOT</strong></div></div><div id="dashboardMessage" class="message"></div></section>
+<section class="card"><div class="section-title"><div><h3>🏭 Machine catalog</h3><div class="muted">Update the machine photos members see in the rental catalog.</div></div><span class="approved">LIVE CATALOG</span></div><div id="machineManagerMessage" class="message"></div><div id="machineManagerList"><div class="empty">Loading machines...</div></div></section>
+<section class="card"><div class="section-title"><div><h3>💳 Deposit requests</h3><div class="muted">Approve only after verifying the real Mobile Money payment.</div></div><button class="btn light" onclick="loadDeposits()">Refresh</button></div><div id="depositMessage" class="message"></div><div id="depositsList">Loading deposits...</div></section>
+<section class="card"><div class="section-title"><div><h3>📤 Withdrawal requests</h3><div class="muted">Record the actual payout reference before approving.</div></div><button class="btn light" onclick="loadWithdrawals()">Refresh</button></div><div id="withdrawalMessage" class="message"></div><div id="withdrawalsList">Loading withdrawals...</div></section>
+<section class="card"><div class="section-title"><div><h3>👥 Members</h3><div class="muted">Review registered member accounts and balances.</div></div><button class="btn light" onclick="loadUsers()">Refresh</button></div><div id="usersMessage" class="message"></div><div id="usersList">Loading users...</div></section>
 </main>
 <script>
-function getToken(){return localStorage.getItem("casharrowToken")}
-function authHeaders(json=false){const headers={Authorization:"Bearer "+getToken()};if(json)headers["Content-Type"]="application/json";return headers}
-function requireToken(){if(!getToken()){window.location.href="/";return false}return true}
-
-async function checkAdmin(){
-  if(!requireToken())return;
-  try{
-    const response=await fetch("/api/admin",{headers:authHeaders()});
-    const data=await response.json();
-    if(!response.ok||!data.success){localStorage.removeItem("casharrowToken");localStorage.removeItem("casharrowUser");window.location.href="/";return}
-    document.getElementById("adminInfo").textContent="Admin ID: "+data.admin.id+" | Role: "+data.admin.role;
-  }catch(error){document.getElementById("message").textContent="Unable to verify admin session."}
-}
-
-async function loadDashboard(){
-  if(!requireToken())return;
-  try{
-    const response=await fetch("/api/admin/dashboard",{headers:authHeaders()});
-    const data=await response.json();
-    if(!response.ok||!data.success){document.getElementById("dashboardMessage").textContent=data.message||"Unable to load dashboard.";return}
-    document.getElementById("totalUsers").textContent=data.totalUsers;
-    document.getElementById("totalBalance").textContent="UGX "+Number(data.totalBalance).toLocaleString();
-    document.getElementById("totalTasks").textContent=data.totalTasks;
-  }catch(error){document.getElementById("dashboardMessage").textContent="Unable to load dashboard."}
-}
-
-async function loadDeposits(){
-  if(!requireToken())return;
-  const list=document.getElementById("depositsList");
-  const message=document.getElementById("depositMessage");
-  list.textContent="Loading deposits...";message.textContent="";
-  try{
-    const response=await fetch("/api/admin/deposits",{headers:authHeaders()});
-    const data=await response.json();
-    if(!response.ok||!data.success){message.textContent=data.message||"Unable to load deposits.";list.textContent="";return}
-    if(!data.deposits.length){list.innerHTML='<div class="empty">No deposit requests yet.</div>';return}
-    list.innerHTML=data.deposits.map(deposit=>{
-      const pending=deposit.status==="pending";
-      const statusClass=pending?"pending":deposit.status==="rejected"?"rejected":"approved";
-      return `<div class="deposit">
-        <div class="deposit-row">
-          <strong>Deposit #${deposit.id} — UGX ${Number(deposit.amount).toLocaleString()}</strong>
-          ${pending?`<button onclick="approveDeposit(${deposit.id},this)">Approve</button>`:`<span class="${statusClass}">${deposit.status}</span>`}
-        </div>
-        <div class="deposit-meta">User ID: ${deposit.user_id}<br>Network: ${deposit.network}<br>Mobile Money: ${deposit.account}<br>Status: <span class="${statusClass}">${deposit.status}</span><br>Submitted: ${deposit.date||"—"}${deposit.approved_at?`<br>Approved: ${deposit.approved_at}`:""}</div>
-      </div>`;
-    }).join("");
-  }catch(error){message.textContent="Unable to load deposits.";list.textContent=""}
-}
-
-async function approveDeposit(id,button){
-  if(!requireToken())return;
-  if(!confirm("Have you verified this Mobile Money payment? Approve UGX deposit #"+id+"?"))return;
-  button.disabled=true;
-  try{
-    const response=await fetch("/api/admin/deposits/"+id+"/approve",{method:"POST",headers:authHeaders(true),body:JSON.stringify({})});
-    const data=await response.json();
-    if(!response.ok||!data.success){alert(data.message||"Deposit approval failed.");button.disabled=false;return}
-    await Promise.all([loadDeposits(),loadDashboard(),loadUsers()]);
-  }catch(error){alert("Unable to approve deposit.");button.disabled=false}
-}
-
-async function loadWithdrawals(){
-  if(!requireToken())return;
-  const list=document.getElementById("withdrawalsList");
-  const message=document.getElementById("withdrawalMessage");
-  list.textContent="Loading withdrawals...";message.textContent="";
-  try{
-    const response=await fetch("/api/admin/withdrawals",{headers:authHeaders()});
-    const data=await response.json();
-    if(!response.ok||!data.success){message.textContent=data.message||"Unable to load withdrawals.";list.textContent="";return}
-    if(!data.withdrawals.length){list.innerHTML='<div class="empty">No withdrawal requests yet.</div>';return}
-    list.innerHTML=data.withdrawals.map(withdrawal=>{
-      const status=withdrawal.status||"pending";
-      const statusClass=status==="pending"?"pending":status==="rejected"?"rejected":"approved";
-      const providerRef=withdrawal.provider_reference||"";
-      return `<div class="deposit">
-        <div class="deposit-row">
-          <strong>Withdrawal #${withdrawal.id} — UGX ${Number(withdrawal.amount).toLocaleString()}</strong>
-          <span class="${statusClass}">${status}</span>
-        </div>
-        <div class="deposit-meta">User: ${withdrawal.name||"—"} (ID ${withdrawal.user_id})<br>Phone: ${withdrawal.phone||"—"}<br>Mobile Money: ${withdrawal.account||"—"}<br>Network: ${withdrawal.network||"—"}<br>Status: <span class="${statusClass}">${status}</span><br>Submitted: ${withdrawal.date||"—"}${providerRef?`<br>Provider reference: ${providerRef}`:""}${withdrawal.approved_at?`<br>Processed: ${withdrawal.approved_at}`:""}</div>
-        ${status==="pending"?`<input class="reference-input" id="withdrawal-ref-${withdrawal.id}" type="text" maxlength="200" autocomplete="off" placeholder="Enter Mobile Money payout/provider reference" aria-label="Provider reference for withdrawal #${withdrawal.id}"><div class="reference-help">Enter the reference from the actual Mobile Money payout before approving. Do not invent one.</div><div class="action-row"><button onclick="approveWithdrawal(${withdrawal.id},this)">Approve</button><button class="reject" onclick="rejectWithdrawal(${withdrawal.id},this)">Reject</button></div>`:""}
-      </div>`;
-    }).join("");
-  }catch(error){message.textContent="Unable to load withdrawals.";list.textContent=""}
-}
-
-async function approveWithdrawal(id,button){
-  if(!requireToken())return;
-  const input=document.getElementById("withdrawal-ref-"+id);
-  const providerReference=input?input.value.trim():"";
-  if(!providerReference){alert("Enter the actual Mobile Money payout/provider reference before approving this withdrawal.");if(input)input.focus();return}
-  if(!confirm("Confirm that the actual Mobile Money payout has already been sent and verified, and approve withdrawal #"+id+" using reference "+providerReference+"?"))return;
-  button.disabled=true;
-  if(input)input.disabled=true;
-  try{
-    const response=await fetch("/api/admin/withdrawals/"+id+"/approve",{method:"POST",headers:authHeaders(true),body:JSON.stringify({providerReference})});
-    const data=await response.json();
-    if(!response.ok||!data.success){alert(data.message||"Withdrawal approval failed.");button.disabled=false;if(input)input.disabled=false;return}
-    await Promise.all([loadWithdrawals(),loadDashboard(),loadUsers()]);
-  }catch(error){alert("Unable to approve withdrawal.");button.disabled=false;if(input)input.disabled=false}
-}
-
-async function rejectWithdrawal(id,button){
-  if(!requireToken())return;
-  if(!confirm("Reject withdrawal #"+id+"? The user's balance will not be deducted."))return;
-  button.disabled=true;
-  try{
-    const response=await fetch("/api/admin/withdrawals/"+id+"/reject",{method:"POST",headers:authHeaders(true),body:JSON.stringify({})});
-    const data=await response.json();
-    if(!response.ok||!data.success){alert(data.message||"Withdrawal rejection failed.");button.disabled=false;return}
-    await loadWithdrawals();
-  }catch(error){alert("Unable to reject withdrawal.");button.disabled=false}
-}
-
-async function loadUsers(){
-  if(!requireToken())return;
-  try{
-    const response=await fetch("/api/admin/users",{headers:authHeaders()});
-    const data=await response.json();
-    if(!response.ok||!data.success){document.getElementById("usersMessage").textContent=data.message||"Unable to load users.";return}
-    const usersList=document.getElementById("usersList");
-    if(data.users.length===0){usersList.textContent="No users found.";return}
-    usersList.innerHTML=data.users.map(user=>`<div class="card"><strong>${user.name}</strong><br>Phone: ${user.phone}<br>Balance: UGX ${Number(user.balance).toLocaleString()}<br>Role: ${user.role}<br>VIP: ${user.vip}</div>`).join("");
-  }catch(error){document.getElementById("usersMessage").textContent="Unable to load users."}
-}
-
-function logout(){localStorage.removeItem("casharrowToken");localStorage.removeItem("casharrowUser");window.location.href="/"}
-
+function getToken(){return localStorage.getItem("casharrowToken")||""}function authHeaders(json=false){const h={Authorization:"Bearer "+getToken()};if(json)h["Content-Type"]="application/json";return h}function requireToken(){if(!getToken()){location.href="/";return false}return true}
+async function checkAdmin(){if(!requireToken())return;try{const r=await fetch("/api/admin",{headers:authHeaders(),cache:"no-store"}),d=await r.json();if(!r.ok||!d.success){logout();return}document.getElementById("adminInfo").textContent=d.admin.id+" · "+d.admin.role}catch(e){document.getElementById("adminInfo").textContent="Unavailable"}}
+async function loadDashboard(){if(!requireToken())return;try{const r=await fetch("/api/admin/dashboard",{headers:authHeaders(),cache:"no-store"}),d=await r.json();if(!r.ok||!d.success)throw Error(d.message||"Unable to load dashboard");document.getElementById("totalUsers").textContent=d.totalUsers;document.getElementById("totalBalance").textContent="UGX "+Number(d.totalBalance).toLocaleString();document.getElementById("totalTasks").textContent=d.totalTasks}catch(e){document.getElementById("dashboardMessage").textContent=e.message}}
+async function loadDeposits(){if(!requireToken())return;const l=document.getElementById("depositsList"),m=document.getElementById("depositMessage");l.textContent="Loading...";try{const r=await fetch("/api/admin/deposits",{headers:authHeaders(),cache:"no-store"}),d=await r.json();if(!r.ok||!d.success)throw Error(d.message||"Unable to load deposits");if(!d.deposits.length){l.innerHTML='<div class="empty">No deposit requests yet.</div>';return}l.innerHTML=d.deposits.map(x=>{const p=x.status==="pending",c=p?"pending":x.status==="rejected"?"rejected":"approved";return `<div class="deposit"><div class="deposit-row"><strong>Deposit #${x.id} — UGX ${Number(x.amount).toLocaleString()}</strong>${p?`<button class="btn" onclick="approveDeposit(${x.id},this)">Approve</button>`:`<span class="${c}">${x.status}</span>`}</div><div class="deposit-meta">User ID: ${x.user_id}<br>Network: ${x.network}<br>Mobile Money: ${x.account}<br>Status: <span class="${c}">${x.status}</span><br>Submitted: ${x.date||"—"}</div></div>`}).join("")}catch(e){m.textContent=e.message;l.textContent=""}}
+async function approveDeposit(id,b){if(!requireToken()||!confirm("Verify the real Mobile Money payment before approving deposit #"+id+"."))return;b.disabled=true;try{const r=await fetch("/api/admin/deposits/"+id+"/approve",{method:"POST",headers:authHeaders(true),body:"{}"}),d=await r.json();if(!r.ok||!d.success)throw Error(d.message||"Approval failed");await Promise.all([loadDeposits(),loadDashboard(),loadUsers()])}catch(e){alert(e.message);b.disabled=false}}
+async function loadWithdrawals(){if(!requireToken())return;const l=document.getElementById("withdrawalsList"),m=document.getElementById("withdrawalMessage");l.textContent="Loading...";try{const r=await fetch("/api/admin/withdrawals",{headers:authHeaders(),cache:"no-store"}),d=await r.json();if(!r.ok||!d.success)throw Error(d.message||"Unable to load withdrawals");if(!d.withdrawals.length){l.innerHTML='<div class="empty">No withdrawal requests yet.</div>';return}l.innerHTML=d.withdrawals.map(x=>{const s=x.status||"pending",c=s==="pending"?"pending":s==="rejected"?"rejected":"approved";return `<div class="deposit"><div class="deposit-row"><strong>Withdrawal #${x.id} — UGX ${Number(x.amount).toLocaleString()}</strong><span class="${c}">${s}</span></div><div class="deposit-meta">User: ${x.name||"—"} (ID ${x.user_id})<br>Phone: ${x.phone||"—"}<br>Mobile Money: ${x.account||"—"}<br>Network: ${x.network||"—"}<br>Status: <span class="${c}">${s}</span><br>Submitted: ${x.date||"—"}${x.provider_reference?`<br>Provider reference: ${x.provider_reference}`:""}</div>${s==="pending"?`<input class="reference-input" id="withdrawal-ref-${x.id}" maxlength="200" placeholder="Mobile Money payout/provider reference"><div class="reference-help">Use the actual reference returned by the payment provider.</div><div class="action-row"><button class="btn" onclick="approveWithdrawal(${x.id},this)">Approve</button><button class="btn danger" onclick="rejectWithdrawal(${x.id},this)">Reject</button></div>`:""}</div>`}).join("")}catch(e){m.textContent=e.message;l.textContent=""}}
+async function approveWithdrawal(id,b){if(!requireToken())return;const i=document.getElementById("withdrawal-ref-"+id),ref=i?.value.trim();if(!ref){alert("Enter the actual payout/provider reference.");i?.focus();return}if(!confirm("Confirm the payout was sent and approve withdrawal #"+id+"?"))return;b.disabled=true;try{const r=await fetch("/api/admin/withdrawals/"+id+"/approve",{method:"POST",headers:authHeaders(true),body:JSON.stringify({providerReference:ref})}),d=await r.json();if(!r.ok||!d.success)throw Error(d.message||"Approval failed");await Promise.all([loadWithdrawals(),loadDashboard(),loadUsers()])}catch(e){alert(e.message);b.disabled=false}}
+async function rejectWithdrawal(id,b){if(!requireToken()||!confirm("Reject withdrawal #"+id+"?"))return;b.disabled=true;try{const r=await fetch("/api/admin/withdrawals/"+id+"/reject",{method:"POST",headers:authHeaders(true),body:"{}"}),d=await r.json();if(!r.ok||!d.success)throw Error(d.message||"Rejection failed");await loadWithdrawals()}catch(e){alert(e.message);b.disabled=false}}
+async function loadUsers(){if(!requireToken())return;try{const r=await fetch("/api/admin/users",{headers:authHeaders(),cache:"no-store"}),d=await r.json();if(!r.ok||!d.success)throw Error(d.message||"Unable to load users");const l=document.getElementById("usersList");if(!d.users.length){l.textContent="No users found.";return}l.innerHTML=d.users.map(u=>`<div class="deposit"><strong>${u.name}</strong><div class="deposit-meta">Phone: ${u.phone}<br>Balance: UGX ${Number(u.balance).toLocaleString()}<br>Role: ${u.role}<br>VIP: ${u.vip}</div></div>`).join("")}catch(e){document.getElementById("usersMessage").textContent=e.message}}
+function logout(){localStorage.removeItem("casharrowToken");localStorage.removeItem("casharrowUser");location.href="/"}
 checkAdmin();loadDashboard();loadUsers();loadDeposits();loadWithdrawals();
 </script>
-</body>
-</html>
+</body></html>
