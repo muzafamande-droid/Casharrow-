@@ -64,6 +64,21 @@ app.get("/admin.html", (req, res) => {
   }
 });
 
+app.get("/", (req, res, next) => {
+  try {
+    const file = path.join(__dirname, "public", "index.html");
+    let html = fs.readFileSync(file, "utf8");
+    const scripts = '<script src="/guest-home-polish.js?v=1"></script>';
+    html = html.replace("</body>", `${scripts}${AVEILOT_BRANDING_SCRIPT}</body>`);
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    res.type("html").send(html);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 app.get("/api/status", async (req, res) => {
@@ -78,39 +93,19 @@ app.get("/api/status", async (req, res) => {
 
 app.use("/api", accountPg.router);
 app.use("/api", memberPg.router);
-app.use("/api", pgFinancial.router);
 app.use("/api", rental.router);
 app.use("/api", withdrawal.router);
 app.use("/api", mobileMoney.router);
+app.use("/api", pgFinancial.router);
 app.use("/api", adminProducts.router);
 
-app.get("/", (req, res) => {
-  const file = path.join(__dirname, "public", "index.html");
-  let html = fs.readFileSync(file, "utf8");
-  const scripts = '<script src="/member-dashboard-v2.js?v=14"></script><script src="/member-dashboard-boot.js?v=3"></script><script src="/casharrow-ui-fixes.js?v=5"></script><script src="/rental-catalog.js?v=custom-machines-1"></script><script src="/aveilot-machine-catalog-fix.js?v=4"></script><script src="/aveilot-auth-ux.js?v=2"></script><script src="/aveilot-withdrawal-fee.js?v=2"></script>';
-  html = html.replace("</body>", `${scripts}${AVEILOT_BRANDING_SCRIPT}</body>`);
-  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-  res.set("Pragma", "no-cache");
-  res.set("Expires", "0");
-  res.type("html").send(html);
+app.use((err, req, res, next) => {
+  console.error("AVEILOT unhandled server error:", err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ success: false, message: "Internal server error" });
 });
 
-app.use((req, res) => res.status(404).json({ success: false, message: "Endpoint not found" }));
-
-async function start() {
-  await db.init();
-  await rental.ready();
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`AVEILOT production server listening on port ${PORT}`);
-  });
-  startRentalExpiryWorker();
-}
-
-if (require.main === module) {
-  start().catch(error => {
-    console.error("AVEILOT startup failed:", error);
-    process.exit(1);
-  });
-}
-
-module.exports = app;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`AVEILOT server listening on port ${PORT}`);
+  try { startRentalExpiryWorker(); } catch (error) { console.error("Rental expiry worker failed to start:", error); }
+});
