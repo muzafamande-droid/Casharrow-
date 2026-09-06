@@ -52,7 +52,7 @@ app.get("/admin.html", (req, res) => {
   try {
     const file = path.join(__dirname, "public", "admin.html");
     let html = fs.readFileSync(file, "utf8");
-    const scripts = '<script src="/admin-machine-manager.js?v=1"></script>';
+    const scripts = '<script src="/admin-machine-manager-v2.js?v=2"></script>';
     html = html.replace("</body>", `${scripts}${AVEILOT_BRANDING_SCRIPT}</body>`);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.set("Pragma", "no-cache");
