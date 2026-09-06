@@ -18,8 +18,8 @@ if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL environment variabl
 if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET environment variable is not configured");
 
 app.disable("x-powered-by");
-app.use(express.json({ limit: "256kb" }));
-app.use(express.urlencoded({ extended: true, limit: "256kb" }));
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
 const AVEILOT_BRANDING_SCRIPT = `<script>(function(){
   function clean(root){
@@ -45,6 +45,22 @@ app.get("/member.html", (req, res) => {
   } catch (error) {
     console.error("AVEILOT member dashboard failed to load:", error);
     res.status(500).send("Unable to load member dashboard");
+  }
+});
+
+app.get("/admin.html", (req, res) => {
+  try {
+    const file = path.join(__dirname, "public", "admin.html");
+    let html = fs.readFileSync(file, "utf8");
+    const scripts = '<script src="/admin-machine-manager.js?v=1"></script>';
+    html = html.replace("</body>", `${scripts}${AVEILOT_BRANDING_SCRIPT}</body>`);
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    res.type("html").send(html);
+  } catch (error) {
+    console.error("AVEILOT admin panel failed to load:", error);
+    res.status(500).send("Unable to load admin panel");
   }
 });
 
