@@ -3,12 +3,18 @@
   window.__casharrowEnhancementsLoaded = true;
 
   const token = () => localStorage.getItem("casharrowToken");
+  // Set this once the dedicated AVEILOT WhatsApp Business number is ready.
+  const AVEILOT_SUPPORT_NUMBER = "";
 
   const style = document.createElement("style");
   style.textContent = `
     .casharrow-deposit{display:none;margin-top:24px}
     .casharrow-deposit .deposit-note{color:#7b8494;font-size:13px;line-height:1.45;margin:8px 0 16px}
     .casharrow-deposit .deposit-status{font-size:13px;margin-top:10px;min-height:18px}
+    .casharrow-support{margin-top:12px;padding:14px;border-radius:16px;background:linear-gradient(135deg,#eef9f2,#fff);border:1px solid #cfe8d8}
+    .casharrow-support-title{font-weight:900;font-size:15px}
+    .casharrow-support-text{font-size:12px;color:#667085;line-height:1.45;margin:4px 0 9px}
+    .casharrow-support button{width:100%;border:0;border-radius:11px;padding:12px;font-weight:900;background:#168a4b;color:#fff;cursor:pointer}
     #userWallet .actions{grid-template-columns:repeat(3,1fr)}
     .casharrow-hide-guest{display:none!important}
     .bottom{background:linear-gradient(135deg,#06142f 0%,#0a2c67 50%,#087cff 100%) !important;border-top:1px solid rgba(255,255,255,.16)!important;box-shadow:0 -10px 28px rgba(7,48,112,.22)!important}
@@ -26,6 +32,31 @@
     confirm.type = "password";
     confirm.placeholder = "Confirm password";
     password.insertAdjacentElement("afterend", confirm);
+  }
+
+  function addSupportUI() {
+    if (!token() || document.getElementById("aveilotSupport")) return;
+    const wallet = document.getElementById("userWallet");
+    if (!wallet) return;
+    const section = document.createElement("section");
+    section.className = "casharrow-support";
+    section.id = "aveilotSupport";
+    section.innerHTML = `
+      <div class="casharrow-support-title">💬 AVEILOT Customer Support</div>
+      <div class="casharrow-support-text">Need help with deposits, withdrawals, rentals or your account? Our support team is here to assist you.</div>
+      <button type="button" id="aveilotSupportButton">💬 Chat with AVEILOT Support</button>
+    `;
+    wallet.insertAdjacentElement("afterend", section);
+    document.getElementById("aveilotSupportButton").onclick = openSupport;
+  }
+
+  function openSupport() {
+    if (AVEILOT_SUPPORT_NUMBER) {
+      const number = AVEILOT_SUPPORT_NUMBER.replace(/\D/g, "");
+      window.open(`https://wa.me/${number}?text=${encodeURIComponent("Hello AVEILOT Support, I need assistance with my account.")}`, "_blank", "noopener");
+      return;
+    }
+    alert("AVEILOT Customer Support is being connected to WhatsApp Business. Please use the support channel provided by AVEILOT when it is available.");
   }
 
   function addDepositUI() {
@@ -47,12 +78,12 @@
     section.id = "casharrowDeposit";
     section.innerHTML = `
       <small>💳 Deposit Funds</small>
-      <h2 style="margin:12px 0 8px;">Add money to your CashArrow wallet</h2>
-      <p class="deposit-note">Submit your Mobile Money payment details here. Your balance is only credited after the deposit is verified and approved by CashArrow.</p>
+      <h2 style="margin:12px 0 8px;">Add money to your AVEILOT wallet</h2>
+      <p class="deposit-note">After you make your Mobile Money payment, enter the amount and the Mobile Money number you paid from, then tap <b>I HAVE PAID</b>. AVEILOT will verify the payment before crediting your balance.</p>
       <input type="number" id="depositAmount" placeholder="Amount (UGX)" min="1">
       <select id="depositNetwork"><option value="">Select network</option><option value="MTN">MTN Mobile Money</option><option value="Airtel">Airtel Money</option></select>
-      <input type="text" id="depositAccount" placeholder="Mobile Money phone number">
-      <div class="actions"><button class="primary" type="button" id="submitDepositButton">Submit Deposit</button><button class="secondary" type="button" id="closeDepositButton">Cancel</button></div>
+      <input type="text" id="depositAccount" inputmode="tel" autocomplete="tel" placeholder="Mobile Money number you are paying from">
+      <div class="actions"><button class="primary" type="button" id="submitDepositButton">I HAVE PAID</button><button class="secondary" type="button" id="closeDepositButton">Cancel</button></div>
       <div class="deposit-status" id="depositStatus"></div>
     `;
     wallet.insertAdjacentElement("afterend", section);
@@ -83,17 +114,17 @@
     const status=document.getElementById("depositStatus");
     if(!Number.isFinite(amount)||amount<=0){status.textContent="Enter a valid deposit amount.";status.style.color="#c62828";return;}
     if(!network){status.textContent="Please select MTN or Airtel.";status.style.color="#c62828";return;}
-    if(!account){status.textContent="Enter your Mobile Money number.";status.style.color="#c62828";return;}
-    status.textContent="Submitting deposit request...";status.style.color="#1769ff";
+    if(!account){status.textContent="Enter the Mobile Money number you are paying from.";status.style.color="#c62828";return;}
+    status.textContent="Submitting payment confirmation...";status.style.color="#1769ff";
     try{
       const response=await fetch("/api/deposits",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},body:JSON.stringify({amount,network,account})});
       const data=await response.json();
       if(!response.ok||!data.success){status.textContent=data.message||"Deposit request failed.";status.style.color="#c62828";return;}
-      status.textContent="✅ Deposit request submitted. Your balance will update after approval.";status.style.color="#0a8f52";
+      status.textContent="✅ Payment confirmation submitted. Your balance will update after AVEILOT verifies and approves the deposit.";status.style.color="#0a8f52";
       document.getElementById("depositAmount").value="";
       document.getElementById("depositAccount").value="";
       document.getElementById("depositNetwork").value="";
-    }catch(error){status.textContent="Unable to connect to CashArrow server.";status.style.color="#c62828";}
+    }catch(error){status.textContent="Unable to connect to AVEILOT server.";status.style.color="#c62828";}
   }
 
   function addLogoutControl(){
@@ -105,7 +136,7 @@
     if(label&&label.nodeType===Node.TEXT_NODE) label.textContent=token()?"Logout":"Account";
   }
   function handleAccountAction(){
-    if(token()){if(confirm("Log out of CashArrow?"))logout();return;}
+    if(token()){if(confirm("Log out of AVEILOT?"))logout();return;}
     openModal("login");
   }
   function logout(){
@@ -210,7 +241,10 @@
 
   document.addEventListener("DOMContentLoaded",()=>{
     addConfirmPassword();
-    if(token()) addDepositUI();
+    if(token()){
+      addDepositUI();
+      addSupportUI();
+    }
     addLogoutControl();
     captureNavigation();
     restoreReferralTasks();
