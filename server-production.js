@@ -36,7 +36,7 @@ app.get("/member.html", (req, res) => {
     const file = path.join(__dirname, "public", "member.html");
     let html = fs.readFileSync(file, "utf8");
     html = html.replaceAll("CashArrow", "AVEILOT");
-    const scripts = '<script src="/rental-catalog.js?v=custom-machines-1"></script><script src="/machine-photo-display.js?v=1"></script><script src="/aveilot-machine-catalog-fix.js?v=4"></script><script src="/aveilot-withdrawal-fee.js?v=2"></script>';
+    const scripts = '<script src="/rental-catalog.js?v=custom-machines-1"></script><script src="/machine-photo-display.js?v=1"></script><script src="/aveilot-machine-catalog-fix.js?v=4"></script><script src="/aveilot-withdrawal-fee.js?v=2"></script><script src="/aveilot-member-polish.js?v=1"></script>';
     html = html.replace("</body>", `${scripts}${AVEILOT_BRANDING_SCRIPT}</body>`);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.set("Pragma", "no-cache");
