@@ -32,8 +32,7 @@
           canvas.height = Math.max(1, Math.round(img.height * scale));
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-          resolve(dataUrl);
+          resolve(canvas.toDataURL("image/jpeg", 0.82));
         };
         img.src = reader.result;
       };
@@ -48,7 +47,7 @@
     card.id = "casharrowMachineManager";
     card.innerHTML = `
       <h2>🏭 Machine Photos</h2>
-      <p class="muted">Change machine photos directly from your phone. No GitHub or coding needed. Only administrators can use this section.</p>
+      <p class="muted">Change machine photos directly from your phone. Choose from your Gallery or take a new photo.</p>
       <div id="machineManagerMessage" class="message"></div>
       <div id="machineManagerList"><div class="empty">Loading machines...</div></div>`;
     const container = document.querySelector("main.container");
@@ -76,16 +75,21 @@
             ${product.image_url ? '<span class="approved">Photo set</span>' : '<span class="pending">No photo</span>'}
           </div>
           <div class="machine-photo-preview">${product.image_url ? `<img src="${esc(product.image_url)}" alt="${esc(product.name)}">` : '<span>📷 No machine photo yet</span>'}</div>
-          <input class="machine-photo-input" type="file" accept="image/*" capture="environment" data-id="${esc(product.id)}" aria-label="Choose photo for ${esc(product.code)}">
+          <input class="machine-photo-input gallery-input" type="file" accept="image/*" data-id="${esc(product.id)}" aria-label="Choose gallery photo for ${esc(product.code)}">
+          <input class="machine-photo-input camera-input" type="file" accept="image/*" capture="environment" data-id="${esc(product.id)}" aria-label="Take photo for ${esc(product.code)}">
           <div class="action-row">
-            <button type="button" class="machine-upload-button" data-id="${esc(product.id)}">📷 Change Photo</button>
+            <button type="button" class="machine-upload-button gallery-button" data-id="${esc(product.id)}">📁 Choose from Gallery</button>
+            <button type="button" class="machine-upload-button camera-button" data-id="${esc(product.id)}">📷 Take Photo</button>
             ${product.image_url ? `<button type="button" class="reject machine-remove-button" data-id="${esc(product.id)}">Remove Photo</button>` : ''}
           </div>
-          <div class="reference-help">Choose a clear photo of ${esc(product.code)}. The photo is resized automatically for the site.</div>
+          <div class="reference-help">Gallery opens your saved photos. Take Photo opens the camera. The image is resized automatically for the site.</div>
         </div>`).join("");
 
-      list.querySelectorAll(".machine-upload-button").forEach(button => {
-        button.addEventListener("click", () => list.querySelector(`.machine-photo-input[data-id="${button.dataset.id}"]`)?.click());
+      list.querySelectorAll(".gallery-button").forEach(button => {
+        button.addEventListener("click", () => list.querySelector(`.gallery-input[data-id="${button.dataset.id}"]`)?.click());
+      });
+      list.querySelectorAll(".camera-button").forEach(button => {
+        button.addEventListener("click", () => list.querySelector(`.camera-input[data-id="${button.dataset.id}"]`)?.click());
       });
       list.querySelectorAll(".machine-photo-input").forEach(input => {
         input.addEventListener("change", () => input.files?.[0] && savePhoto(input.dataset.id, input.files[0]));
@@ -115,16 +119,10 @@
         method: "PATCH",
         headers: jsonHeaders(),
         body: JSON.stringify({
-          series: product.series,
-          code: product.code,
-          name: product.name,
-          description: product.description || "",
-          image_url: imageUrl,
-          rental_fee: product.rental_fee,
-          rental_days: product.rental_days,
-          return_amount: product.return_amount,
-          active: product.active,
-          featured: product.featured
+          series: product.series, code: product.code, name: product.name,
+          description: product.description || "", image_url: imageUrl,
+          rental_fee: product.rental_fee, rental_days: product.rental_days,
+          return_amount: product.return_amount, active: product.active, featured: product.featured
         })
       });
       message.textContent = `${product.code} photo updated successfully.`;
@@ -141,19 +139,12 @@
       if (!product) throw new Error("Machine not found.");
       if (!confirm(`Remove the photo for ${product.code}?`)) return;
       await api(`/api/admin/products/${encodeURIComponent(id)}`, {
-        method: "PATCH",
-        headers: jsonHeaders(),
+        method: "PATCH", headers: jsonHeaders(),
         body: JSON.stringify({
-          series: product.series,
-          code: product.code,
-          name: product.name,
-          description: product.description || "",
-          image_url: null,
-          rental_fee: product.rental_fee,
-          rental_days: product.rental_days,
-          return_amount: product.return_amount,
-          active: product.active,
-          featured: product.featured
+          series: product.series, code: product.code, name: product.name,
+          description: product.description || "", image_url: null,
+          rental_fee: product.rental_fee, rental_days: product.rental_days,
+          return_amount: product.return_amount, active: product.active, featured: product.featured
         })
       });
       message.textContent = `${product.code} photo removed.`;
@@ -167,16 +158,13 @@
     if (document.getElementById("casharrow-machine-manager-styles")) return;
     const style = document.createElement("style");
     style.id = "casharrow-machine-manager-styles";
-    style.textContent = `.machine-editor{margin-top:12px}.machine-editor-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.machine-photo-preview{margin-top:12px;border:1px solid #e1e8f2;border-radius:14px;min-height:170px;background:#f5f8fc;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#718096;font-size:13px}.machine-photo-preview img{display:block;width:100%;height:220px;object-fit:contain}.machine-photo-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.machine-upload-button{margin-top:10px}.machine-remove-button{margin-top:10px}@media(max-width:480px){.machine-photo-preview{min-height:150px}.machine-photo-preview img{height:190px}}`;
+    style.textContent = `.machine-editor{margin-top:12px}.machine-editor-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.machine-photo-preview{margin-top:12px;border:1px solid #e1e8f2;border-radius:14px;min-height:170px;background:#f5f8fc;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#718096;font-size:13px}.machine-photo-preview img{display:block;width:100%;height:220px;object-fit:contain}.machine-photo-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.machine-upload-button{margin-top:10px}.machine-remove-button{margin-top:10px}@media(max-width:480px){.machine-photo-preview{min-height:150px}.machine-photo-preview img{height:190px}.machine-upload-button{width:100%;margin-top:8px}}`;
     document.head.appendChild(style);
   }
 
   function start() {
     if (!document.querySelector("main.container")) return;
-    styles();
-    ensureUI();
-    loadMachines();
+    styles(); ensureUI(); loadMachines();
   }
-
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true }); else start();
 })();
