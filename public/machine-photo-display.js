@@ -1,4 +1,13 @@
 (() => {
+  function loadReferralShare() {
+    if (document.querySelector('script[data-casharrow-share-sheet]')) return;
+    const script = document.createElement('script');
+    script.src = '/share-referral.js?v=1';
+    script.async = true;
+    script.dataset.casharrowShareSheet = '1';
+    document.head.appendChild(script);
+  }
+
   async function applyPhotos() {
     try {
       const response = await fetch('/api/products', { cache: 'no-store' });
@@ -10,8 +19,9 @@
         const product = byId.get(String(button.dataset.rentProduct));
         if (!product || !product.image_url) return;
         const wrap = button.closest('.rental-product-card')?.querySelector('.rental-product-image-wrap');
-        if (!wrap) return;
+        if (!wrap || wrap.querySelector('.casharrow-admin-machine-photo')) return;
         const img = document.createElement('img');
+        img.className = 'casharrow-admin-machine-photo';
         img.src = product.image_url;
         img.alt = product.name || product.code || 'CashArrow machine';
         img.loading = 'lazy';
@@ -26,8 +36,14 @@
   }
 
   const start = () => {
+    loadReferralShare();
     applyPhotos();
-    const observer = new MutationObserver(() => applyPhotos());
+    let timer = null;
+    const observer = new MutationObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(applyPhotos, 150);
+      loadReferralShare();
+    });
     observer.observe(document.body, { childList: true, subtree: true });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
