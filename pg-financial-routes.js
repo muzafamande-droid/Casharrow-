@@ -59,6 +59,13 @@ router.post("/deposits", auth, async (req, res) => {
   if (!account) return res.status(400).json({ success: false, message: "Enter your Mobile Money number" });
 
   try {
+    // Deposits can only be submitted when an administrator has explicitly enabled
+    // the deposit system. The receiving numbers remain private and are never sent here.
+    const settings = await db.query("SELECT enabled FROM payment_settings WHERE id = 1");
+    if (!settings.rowCount || !settings.rows[0].enabled) {
+      return res.status(503).json({ success: false, message: "Deposits are currently unavailable. Please try again later." });
+    }
+
     const deposit = await financial.createDeposit({ userId: req.user.id, amount, network, account, idempotencyKey });
     res.status(201).json({ success: true, message: "Deposit request submitted", deposit });
   } catch (error) {
