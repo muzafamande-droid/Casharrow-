@@ -3,7 +3,7 @@
   window.__aveilotMachinePhotoDisplay = true;
 
   // AVEILOT launch photo set.
-  // Use varied high-resolution real generator / industrial power-system visuals.
+  // Varied high-resolution generator / industrial power-system visuals.
   // Admin-uploaded machine photos always take priority over these defaults.
   const AVEILOT_PHOTOS = [
     'https://images.pexels.com/photos/18816918/pexels-photo-18816918.jpeg?cs=srgb&dl=pexels-igovar-igovar-3000547-18816918.jpg&fm=jpg',
@@ -12,12 +12,12 @@
     'https://images.pexels.com/photos/20091612/pexels-photo-20091612.jpeg?cs=srgb&dl=pexels-richard-wilson-779692900-20091612.jpg&fm=jpg',
     'https://images.stockcake.com/public/c/2/1/c21e252f-6a70-454d-8130-124d2be845d0_large/colossal-turbine-engine-stockcake.jpg',
     'https://images.stockcake.com/public/c/7/c/c7c13a81-5dc1-4cc3-8e33-012430c7007b_large/dynamic-industrial-turbine-stockcake.jpg',
-    'https://images.stockcake.com/public/30370e19-c1eb-48de-bc30-806dfc8af3d6_small/monumental-industrial-power-stockcake.jpg',
-    'https://images.stockcake.com/public/d/8/5/d859be71-ba2d-4549-9bf3-b5528454906d_small/turbine-energy-vortex-stockcake.jpg'
+    'https://images.stockcake.com/public/e/b/4/eb453184-925f-4963-b8eb-ad9d2bcabee5_large/green-energy-machine-stockcake.jpg',
+    'https://images.stockcake.com/public/2/c/2/2c277ee3-8151-450a-8c5b-6685ab084196_large/industrial-turbine-assembly-stockcake.jpg'
   ];
 
-  // Deliberately spread the eight launch visuals across the 20-product catalog
-  // so neighbouring cards do not immediately repeat the same image.
+  // Spread the eight launch visuals across the 20-product catalog so
+  // neighbouring cards do not immediately repeat the same image.
   const CODE_TO_PHOTO = {
     A1:0,A2:1,A3:2,A4:3,A5:4,
     B1:5,B2:6,B3:7,B4:2,B5:0,
