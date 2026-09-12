@@ -7,10 +7,14 @@ const sqlite = new Database(
   process.env.DATABASE_PATH || path.join(__dirname, "casharrow.db")
 );
 
+const postgresSsl = process.env.DATABASE_SSL === "true"
+  ? { rejectUnauthorized: false }
+  : false;
+
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false
+      ssl: postgresSsl
     })
   : null;
 
@@ -95,34 +99,6 @@ sqlite.exec(`
     FOREIGN KEY (referred_user_id) REFERENCES users(id)
   );
 `);
-
-const userColumns = sqlite.prepare("PRAGMA table_info(users)").all().map(c => c.name);
-if (!userColumns.includes("referral_code")) sqlite.prepare("ALTER TABLE users ADD COLUMN referral_code TEXT").run();
-if (!userColumns.includes("referred_by")) sqlite.prepare("ALTER TABLE users ADD COLUMN referred_by INTEGER").run();
-
-const updateReferralCode = sqlite.prepare("UPDATE users SET referral_code = ? WHERE id = ?");
-for (const user of sqlite.prepare("SELECT id FROM users WHERE referral_code IS NULL").all()) {
-  updateReferralCode.run("CA" + String(user.id).padStart(6, "0"), user.id);
-}
-
-const adminExists = sqlite.prepare("SELECT id FROM users WHERE role = ?").get("admin");
-if (!adminExists) {
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword) throw new Error("ADMIN_PASSWORD environment variable is not configured");
-  const hash = bcrypt.hashSync(adminPassword, 12);
-  const info = sqlite.prepare(`
-    INSERT INTO users (phone, name, password, role, balance, vip, referral_code)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run("admin", "Admin", hash, "admin", 0, 10, "CAADMIN");
-  const adminId = info.lastInsertRowid;
-  const insertTask = sqlite.prepare("INSERT INTO tasks (user_id, title, reward) VALUES (?, ?, ?)");
-  insertTask.run(adminId, "Invite 3 friends", 500);
-  insertTask.run(adminId, "Daily check-in", 50);
-  insertTask.run(adminId, "Share app", 200);
-  const insertReward = sqlite.prepare("INSERT INTO rewards (user_id, title, amount, claimed) VALUES (?, ?, ?, ?)");
-  insertReward.run(adminId, "Welcome", 0, 1);
-  insertReward.run(adminId, "VIP Bonus", 500, 0);
-}
 
 const tables = [
   { name: "users", columns: ["id","phone","name","password","role","balance","wallet","last_salary","this_salary","share","vip","salary_claimed","last_checkin","created_at","referral_code","referred_by"] },
