@@ -139,7 +139,17 @@ test("withdrawal provider references cannot be reused across users", async () =>
   )).rows[0];
   assert.equal(Number(userBState.balance), 100000);
   assert.equal(Number(userBState.wallet), 100000);
-  assert.equal(Number(userBState.reserved_balance), 10000);
+  // userB already has the 20,000 withdrawal created in the previous test.
+  // The 10,000 withdrawal in this test is an additional pending reservation.
+  assert.equal(Number(userBState.reserved_balance), 30000);
 
   await financial.rejectWithdrawal(second.id);
+
+  const afterReject = (await pgDb.query(
+    "SELECT balance, wallet, reserved_balance FROM users WHERE id = $1",
+    [userB]
+  )).rows[0];
+  assert.equal(Number(afterReject.balance), 100000);
+  assert.equal(Number(afterReject.wallet), 100000);
+  assert.equal(Number(afterReject.reserved_balance), 20000);
 });
