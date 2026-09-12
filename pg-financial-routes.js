@@ -1,7 +1,9 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const db = require("./database-pg");
 const financial = require("./financial-pg-v2");
+const paymentProvider = require("./mobile-money-provider");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -27,6 +29,10 @@ function admin(req, res, next) {
 function positiveAmount(value) {
   const amount = Number(value);
   return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function automaticReference(kind) {
+  return `aveilot-${kind}-${crypto.randomUUID()}`;
 }
 
 router.get("/wallet", auth, async (req, res) => {
@@ -59,15 +65,29 @@ router.post("/deposits", auth, async (req, res) => {
   if (!account) return res.status(400).json({ success: false, message: "Enter your Mobile Money number" });
 
   try {
-    // Deposits can only be submitted when an administrator has explicitly enabled
-    // the deposit system. The receiving numbers remain private and are never sent here.
     const settings = await db.query("SELECT enabled FROM payment_settings WHERE id = 1");
     if (!settings.rowCount || !settings.rows[0].enabled) {
       return res.status(503).json({ success: false, message: "Deposits are currently unavailable. Please try again later." });
     }
 
-    const deposit = await financial.createDeposit({ userId: req.user.id, amount, network, account, idempotencyKey });
-    res.status(201).json({ success: true, message: "Deposit request submitted", deposit });
+    const auto = paymentProvider.automationEnabled();
+    const providerReady = paymentProvider.providerConfigured(network);
+    const providerReference = auto && providerReady ? automaticReference("deposit") : null;
+    const deposit = await financial.createDeposit({ userId: req.user.id, amount, network, account, providerReference, idempotencyKey });
+
+    if (auto && providerReady && deposit.status === "pending") {
+      try {
+        await paymentProvider.collect({ amount, phone: account, network, reference: providerReference, externalId: providerReference });
+        return res.status(201).json({ success: true, message: "Payment request sent. Complete the Mobile Money prompt; your wallet will be credited after confirmation.", deposit });
+      } catch (providerError) {
+        // Do not mark the deposit failed here: a provider timeout can happen after
+        // the request has already reached the customer's Mobile Money network.
+        console.error("Automatic deposit initiation failed:", providerError);
+        return res.status(202).json({ success: true, message: "Payment request is being checked. Please wait for confirmation before submitting again.", deposit });
+      }
+    }
+
+    res.status(201).json({ success: true, message: "Deposit request submitted for verification", deposit });
   } catch (error) {
     console.error("PG deposit failed:", error);
     res.status(400).json({ success: false, message: error.message });
@@ -95,7 +115,31 @@ router.post("/withdrawals", auth, async (req, res) => {
   if (!account || account.length > 64) return res.status(400).json({ success: false, message: "Enter a valid Mobile Money number" });
 
   try {
+    const auto = paymentProvider.automationEnabled();
+    const providerReady = paymentProvider.providerConfigured(network);
+    const providerReference = auto && providerReady ? automaticReference("withdrawal") : null;
     const withdrawal = await financial.createWithdrawal({ userId: req.user.id, amount, account, network, idempotencyKey });
+
+    if (auto && providerReady && withdrawal.status === "pending") {
+      try {
+        await db.query("UPDATE withdrawals SET provider_reference = $1 WHERE id = $2 AND status = 'pending'", [providerReference, withdrawal.id]);
+        await paymentProvider.disburse({ amount: withdrawal.payout, phone: account, network, reference: providerReference, externalId: providerReference });
+        withdrawal.provider_reference = providerReference;
+        return res.status(201).json({
+          success: true,
+          message: "Withdrawal payout has been initiated and is awaiting confirmation.",
+          withdrawal: { id: withdrawal.id, amount: withdrawal.amount, account: withdrawal.account, network: withdrawal.network, status: withdrawal.status, date: withdrawal.date, payout: withdrawal.payout, providerReference }
+        });
+      } catch (providerError) {
+        console.error("Automatic withdrawal initiation failed:", providerError);
+        return res.status(202).json({
+          success: true,
+          message: "Withdrawal is pending provider confirmation. Do not submit it again.",
+          withdrawal: { id: withdrawal.id, amount: withdrawal.amount, account: withdrawal.account, network: withdrawal.network, status: withdrawal.status, date: withdrawal.date, payout: withdrawal.payout, providerReference }
+        });
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: "Withdrawal request submitted",
@@ -123,6 +167,10 @@ router.get("/withdrawals", auth, async (req, res) => {
     console.error("PG withdrawals failed:", error);
     res.status(500).json({ success: false, message: "Unable to load withdrawals" });
   }
+});
+
+router.get("/admin/payment-provider-status", auth, admin, async (req, res) => {
+  res.json({ success: true, providers: paymentProvider.status() });
 });
 
 router.get("/admin/deposits", auth, admin, async (req, res) => {
