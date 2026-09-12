@@ -1,18 +1,33 @@
 (() => {
+  if (window.__aveilotMachinePhotoDisplay) return;
+  window.__aveilotMachinePhotoDisplay = true;
+
+  // AVEILOT launch photo set.
+  // Use varied high-resolution real generator / industrial power-system visuals.
+  // Admin-uploaded machine photos always take priority over these defaults.
   const AVEILOT_PHOTOS = [
-    'https://images.stockcake.com/public/1/e/6/1e616c57-f289-4d10-9ab9-1bb75b6d4a26_large/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/a/7/1a734b73-4db1-42d2-b8b6-a92d8e9341d2_small/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/3/b/7/3b7f88ed-1421-4505-8431-f0f959a371ab_small/futuristic-mechanical-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/2/8/128c7c7a-8e4a-41f8-a249-3b0c4d726169_small/futuristic-power-source-stockcake.jpg',
-    'https://images.stockcake.com/public/8/d/f/8df1d8b9-0a4c-4509-931d-775a403a5f38_small/mechanical-core-illuminated-stockcake.jpg'
+    'https://images.pexels.com/photos/18816918/pexels-photo-18816918.jpeg?cs=srgb&dl=pexels-igovar-igovar-3000547-18816918.jpg&fm=jpg',
+    'https://images.pexels.com/photos/35042792/pexels-photo-35042792.jpeg?cs=srgb&dl=pexels-theshuttervision-35042792.jpg&fm=jpg',
+    'https://images.pexels.com/photos/5693845/pexels-photo-5693845.jpeg?cs=srgb&dl=pexels-ezrah-lane-3654374-5693845.jpg&fm=jpg',
+    'https://images.pexels.com/photos/20091612/pexels-photo-20091612.jpeg?cs=srgb&dl=pexels-richard-wilson-779692900-20091612.jpg&fm=jpg',
+    'https://images.stockcake.com/public/c/2/1/c21e252f-6a70-454d-8130-124d2be845d0_large/colossal-turbine-engine-stockcake.jpg',
+    'https://images.stockcake.com/public/c/7/c/c7c13a81-5dc1-4cc3-8e33-012430c7007b_large/dynamic-industrial-turbine-stockcake.jpg',
+    'https://images.stockcake.com/public/30370e19-c1eb-48de-bc30-806dfc8af3d6_small/monumental-industrial-power-stockcake.jpg',
+    'https://images.stockcake.com/public/d/8/5/d859be71-ba2d-4549-9bf3-b5528454906d_small/turbine-energy-vortex-stockcake.jpg'
   ];
 
+  // Deliberately spread the eight launch visuals across the 20-product catalog
+  // so neighbouring cards do not immediately repeat the same image.
+  const CODE_TO_PHOTO = {
+    A1:0,A2:1,A3:2,A4:3,A5:4,
+    B1:5,B2:6,B3:7,B4:2,B5:0,
+    C1:3,C2:5,C3:1,C4:6,C5:4,
+    D1:7,D2:2,D3:5,D4:0,D5:3
+  };
+
   function photoFor(code) {
-    const m = String(code || '').toUpperCase().match(/\b([ABCD])([1-5])\b/);
-    if (!m) return AVEILOT_PHOTOS[0];
-    const series = m[1].charCodeAt(0) - 65;
-    const number = Number(m[2]) - 1;
-    return AVEILOT_PHOTOS[(series * 5 + number) % AVEILOT_PHOTOS.length];
+    const c = String(code || '').toUpperCase().match(/\b([ABCD][1-5])\b/)?.[1] || 'A1';
+    return AVEILOT_PHOTOS[CODE_TO_PHOTO[c] ?? 0];
   }
 
   function codeForButton(button, product) {
@@ -28,12 +43,16 @@
       .aveilot-sci-fi-machine-photo{
         display:block!important;width:100%!important;height:100%!important;
         object-fit:cover!important;background:#050816!important;
-        filter:saturate(1.08) contrast(1.08) brightness(.92);
+        filter:saturate(1.04) contrast(1.05) brightness(.96);
+        transition:transform .35s ease,filter .35s ease;
       }
       .aveilot-sci-fi-stage{
         position:relative!important;overflow:hidden!important;
         background:#050816!important;
-        box-shadow:inset 0 0 0 1px rgba(75,180,255,.28),0 12px 30px rgba(0,90,220,.20);
+        box-shadow:inset 0 0 0 1px rgba(75,180,255,.25),0 12px 30px rgba(0,90,220,.18);
+      }
+      .aveilot-sci-fi-stage:hover .aveilot-sci-fi-machine-photo{
+        transform:scale(1.025);filter:saturate(1.08) contrast(1.07) brightness(1);
       }
       .aveilot-sci-fi-stage::after{
         content:'AVEILOT • POWER SYSTEM';position:absolute;right:9px;top:9px;
@@ -41,6 +60,8 @@
         padding:7px 8px;border-radius:7px;background:rgba(3,17,45,.78);
         border:1px solid rgba(100,210,255,.55);pointer-events:none;
       }
+      .aveilot-sci-fi-stage .rental-series-badge{z-index:5}
+      @media(prefers-reduced-motion:reduce){.aveilot-sci-fi-machine-photo{transition:none}}
     `;
     document.head.appendChild(style);
   }
@@ -48,7 +69,7 @@
   function loadReferralShare() {
     if (document.querySelector('script[data-casharrow-share-sheet]')) return;
     const script = document.createElement('script');
-    script.src = '/share-referral.js?v=1';
+    script.src = '/share-referral.js?v=2';
     script.async = true;
     script.dataset.casharrowShareSheet = '1';
     document.head.appendChild(script);
@@ -72,21 +93,27 @@
         const wanted = photoFor(code);
         const current = wrap.querySelector('.casharrow-admin-machine-photo');
 
-        // Replace the old catalog SVG placeholder with the new AVEILOT
-        // futuristic power-system visual. Admin-uploaded photos remain untouched.
+        // Never overwrite a photo selected by the admin.
         if (current) return;
-        if (!wrap.querySelector('.aveilot-sci-fi-machine-photo')) {
+
+        let img = wrap.querySelector('.aveilot-sci-fi-machine-photo');
+        if (!img) {
           wrap.querySelector('svg')?.remove();
-          const img = document.createElement('img');
+          img = document.createElement('img');
           img.className = 'aveilot-sci-fi-machine-photo';
-          img.src = wanted;
-          img.alt = `${product?.name || 'AVEILOT PowerGen Machine'} futuristic power system`;
+          img.alt = `${product?.name || 'AVEILOT PowerGen Machine'} power system`;
           img.loading = 'lazy';
           img.decoding = 'async';
           img.referrerPolicy = 'no-referrer';
           wrap.prepend(img);
-          wrap.classList.add('aveilot-sci-fi-stage');
         }
+
+        if (img.dataset.aveilotPhoto !== wanted) {
+          img.dataset.aveilotPhoto = wanted;
+          img.src = wanted;
+        }
+
+        wrap.classList.add('aveilot-sci-fi-stage');
       });
     } catch (error) {
       console.error('Unable to apply AVEILOT machine photos', error);
