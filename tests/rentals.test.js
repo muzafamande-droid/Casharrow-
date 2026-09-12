@@ -82,7 +82,7 @@ test("configured rental checkout rejects a user without sufficient balance", asy
   assert.match(data.message, /insufficient balance/i);
 });
 
-test("configured rental deducts wallet balance and cannot complete before its end date", async () => {
+test("configured rental deducts wallet balance and manual completion is disabled", async () => {
   const user = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [testPhone])).rows[0];
   assert.ok(user);
   const product = (await pgDb.query("SELECT id FROM products WHERE code = 'A1'")).rows[0];
@@ -110,11 +110,11 @@ test("configured rental deducts wallet balance and cannot complete before its en
   assert.equal(Number(rentalRow.return_amount), 45000);
 
   const earlyComplete = await post(`/api/rentals/${fundedData.rentalId}/complete`, {}, loginData.token);
-  assert.equal(earlyComplete.status, 409);
-  assert.match((await earlyComplete.json()).message, /has not ended/i);
+  assert.equal(earlyComplete.status, 410);
+  assert.match((await earlyComplete.json()).message, /manual rental completion is disabled/i);
 });
 
-test("each qualifying rental pays three referral levels without reducing the direct commission", async () => {
+test("each qualifying rental pays only the direct referrer 10% commission", async () => {
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-6);
   const rootPhone = `0711${suffix}`;
   const directPhone = `0722${suffix}`;
@@ -125,7 +125,7 @@ test("each qualifying rental pays three referral levels without reducing the dir
   try {
     const rootRegistration = await post("/api/register", {
       phone: rootPhone,
-      name: "Level 3 Owner",
+      name: "Root Referrer",
       password,
       confirmPassword: password
     });
@@ -161,17 +161,11 @@ test("each qualifying rental pays three referral levels without reducing the dir
     });
     assert.equal(buyerRegistration.status, 201);
 
-    const users = (await pgDb.query(
-      "SELECT id, phone FROM users WHERE phone IN ($1, $2, $3, $4) ORDER BY phone",
-      [rootPhone, directPhone, level2Phone, buyerPhone]
-    )).rows;
-    assert.equal(users.length, 4);
-
+    const direct = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [level2Phone])).rows[0];
+    const indirect = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [directPhone])).rows[0];
     const root = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [rootPhone])).rows[0];
-    const direct = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [directPhone])).rows[0];
-    const level2 = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [level2Phone])).rows[0];
     const buyer = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [buyerPhone])).rows[0];
-    assert.ok(root && direct && level2 && buyer);
+    assert.ok(direct && indirect && root && buyer);
 
     await pgDb.query("UPDATE users SET balance = 100000, wallet = 100000 WHERE id = $1", [buyer.id]);
     const product = (await pgDb.query("SELECT id FROM products WHERE code = 'A1'")).rows[0];
@@ -180,44 +174,30 @@ test("each qualifying rental pays three referral levels without reducing the dir
     const firstResponse = await post("/api/rentals", { productId: product.id }, loginData.token);
     const firstData = await firstResponse.json();
     assert.equal(firstResponse.status, 201);
-    assert.equal(Number(firstData.referralCommission), 9000);
+    assert.equal(Number(firstData.referralCommission), 3000);
     assert.deepEqual(
       firstData.referralCommissions.map(item => [item.level, Number(item.amount)]),
-      [[1, 6000], [2, 2000], [3, 1000]]
+      [[1, 3000]]
     );
 
     const rewards = (await pgDb.query(
       "SELECT referrer_id, referred_user_id, amount, rental_id, level FROM referral_rewards WHERE rental_id = $1 ORDER BY level",
       [firstData.rentalId]
     )).rows;
-    assert.equal(rewards.length, 3);
+    assert.equal(rewards.length, 1);
     assert.deepEqual(rewards.map(row => [Number(row.referrer_id), Number(row.amount), Number(row.level)]), [
-      [Number(level2.id), 6000, 1],
-      [Number(direct.id), 2000, 2],
-      [Number(root.id), 1000, 3]
+      [Number(direct.id), 3000, 1]
     ]);
 
-    const directAfterFirst = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [level2.id])).rows[0];
-    const level2AfterFirst = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [direct.id])).rows[0];
+    const directAfterFirst = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [direct.id])).rows[0];
+    const indirectAfterFirst = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [indirect.id])).rows[0];
     const rootAfterFirst = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [root.id])).rows[0];
-    assert.equal(Number(directAfterFirst.balance), 6000);
-    assert.equal(Number(directAfterFirst.wallet), 6000);
-    assert.equal(Number(level2AfterFirst.balance), 2000);
-    assert.equal(Number(level2AfterFirst.wallet), 2000);
-    assert.equal(Number(rootAfterFirst.balance), 1000);
-    assert.equal(Number(rootAfterFirst.wallet), 1000);
-
-    await pgDb.query("UPDATE users SET balance = 100000, wallet = 100000 WHERE id = $1", [buyer.id]);
-    const secondResponse = await post("/api/rentals", { productId: product.id }, loginData.token);
-    const secondData = await secondResponse.json();
-    assert.equal(secondResponse.status, 201);
-    assert.equal(Number(secondData.referralCommission), 9000);
-
-    const rewardCount = await pgDb.query(
-      "SELECT COUNT(*) AS count FROM referral_rewards WHERE referred_user_id = $1",
-      [buyer.id]
-    );
-    assert.equal(Number(rewardCount.rows[0].count), 6);
+    assert.equal(Number(directAfterFirst.balance), 3000);
+    assert.equal(Number(directAfterFirst.wallet), 3000);
+    assert.equal(Number(indirectAfterFirst.balance), 0);
+    assert.equal(Number(indirectAfterFirst.wallet), 0);
+    assert.equal(Number(rootAfterFirst.balance), 0);
+    assert.equal(Number(rootAfterFirst.wallet), 0);
   } finally {
     const ids = await pgDb.query("SELECT id FROM users WHERE phone IN ($1, $2, $3, $4)", [rootPhone, directPhone, level2Phone, buyerPhone]);
     const userIds = ids.rows.map(row => row.id);
