@@ -5,9 +5,13 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is not configured");
 }
 
+const postgresSsl = process.env.DATABASE_SSL === "true"
+  ? { rejectUnauthorized: false }
+  : false;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  ssl: postgresSsl,
   max: Number(process.env.PG_POOL_MAX || 10),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
@@ -168,9 +172,6 @@ async function init() {
     }
   }
 
-  // Idempotency keys are scoped to each user. A retry by the same user must
-  // resolve to the existing transaction, while two different users may use
-  // the same client-generated key without colliding.
   await query("DROP INDEX IF EXISTS uq_deposits_idempotency_key");
   await query("DROP INDEX IF EXISTS uq_withdrawals_idempotency_key");
   await query("CREATE UNIQUE INDEX IF NOT EXISTS uq_deposits_user_idempotency_key ON deposits(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL");
