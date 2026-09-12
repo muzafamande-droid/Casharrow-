@@ -35,6 +35,7 @@
       .aveilot-rental-actions button{border:0;border-radius:13px;padding:13px;font-weight:900;min-height:48px;cursor:pointer}
       .aveilot-rental-cancel{background:#eef2f7;color:#172033}
       .aveilot-rental-confirm{background:#0757e8;color:#fff}
+      .aveilot-rental-deposit{background:#0757e8;color:#fff}
       .aveilot-rental-confirm:disabled{opacity:.6;cursor:wait}
       @media(max-width:480px){.aveilot-rental-card{padding:18px}.aveilot-rental-grid{gap:7px}.aveilot-rental-stat strong{font-size:13px}}
     `;
@@ -64,7 +65,7 @@
     document.getElementById('aveilotRentalDialog')?.remove();
   }
 
-  function showRentalDialog({ title, subtitle='', stats=[], warning='', confirmText='Confirm Rental', onConfirm }) {
+  function showRentalDialog({ title, subtitle='', stats=[], warning='', confirmText='Confirm Rental', actionText='', onAction, onConfirm }) {
     closeRentalDialog();
     const root = document.createElement('div');
     root.id = 'aveilotRentalDialog';
@@ -76,11 +77,17 @@
       ${warning ? `<div class="aveilot-rental-warning">${warning}</div>` : ''}
       <div class="aveilot-rental-actions">
         <button type="button" class="aveilot-rental-cancel">Close</button>
+        ${actionText && onAction ? `<button type="button" class="aveilot-rental-deposit">${actionText}</button>` : ''}
         ${onConfirm ? `<button type="button" class="aveilot-rental-confirm">${confirmText}</button>` : ''}
       </div>
     </div>`;
     document.body.appendChild(root);
     root.querySelector('.aveilot-rental-cancel').onclick = closeRentalDialog;
+    const action = root.querySelector('.aveilot-rental-deposit');
+    if (action) action.onclick = async () => {
+      action.disabled = true;
+      try { await onAction(); } catch (error) { action.disabled = false; }
+    };
     const confirm = root.querySelector('.aveilot-rental-confirm');
     if (confirm) confirm.onclick = async () => {
       confirm.disabled = true;
@@ -98,9 +105,31 @@
     return String(value ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   }
 
+  function money(value) {
+    const amount = Number(value || 0);
+    return `UGX ${amount.toLocaleString()}`;
+  }
+
   function formatDaily(income, days) {
     const daily = days > 0 ? Number(income) / Number(days) : 0;
     return Number.isInteger(daily) ? `UGX ${daily.toLocaleString()}` : `UGX ${daily.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  }
+
+  function openDepositForRental(fee) {
+    closeRentalDialog();
+    const section = document.getElementById('casharrowDeposit');
+    const amount = document.getElementById('depositAmount');
+    if (amount) amount.value = String(fee);
+    if (typeof window.openAveilotDeposit === 'function') {
+      window.openAveilotDeposit(fee);
+      return;
+    }
+    if (section) {
+      section.style.display = 'block';
+      section.scrollIntoView({behavior:'smooth',block:'start'});
+      return;
+    }
+    alert('Please open your Wallet and choose Deposit Funds.');
   }
 
   async function handleRentalClick(button) {
@@ -121,6 +150,7 @@
     const income = Number(product.return_amount ?? product.income ?? 0);
     const days = Number(product.rental_days ?? product.duration_days ?? 0);
     const name = esc(product.name || 'AVEILOT PowerGen Machine');
+    const code = String(product.name || '').match(/\b([ABCD][1-5])\b/i)?.[1]?.toUpperCase() || product.name || 'AVEILOT Machine';
 
     // Check the live wallet before asking the member to confirm a purchase.
     const walletResponse = await fetch('/api/wallet', {headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
@@ -131,19 +161,21 @@
     if (balance < fee) {
       showRentalDialog({
         title:'Insufficient balance',
-        subtitle:`You need ${money(fee)} to rent ${name}, but your available balance is ${money(balance)}.`,
-        warning:'Please deposit funds into your AVEILOT wallet before renting this machine.'
+        subtitle:`You need ${money(fee)} to rent ${name}. Your available balance is ${money(balance)}.`,
+        warning:'Please deposit funds into your AVEILOT wallet to continue.',
+        actionText:'Deposit Funds',
+        onAction:()=>openDepositForRental(fee)
       });
       return;
     }
 
     showRentalDialog({
-      title:`Confirm ${name}`,
+      title:code,
       subtitle:'Review the rental details before confirming.',
       stats:[
         {label:'Rental fee',value:money(fee)},
-        {label:'Rental term',value:`${days} days`},
         {label:'Daily income',value:formatDaily(income,days),className:'income'},
+        {label:'Rental period',value:`${days} days`},
         {label:'Total return',value:money(income),className:'income'}
       ],
       confirmText:'Confirm Rental',
@@ -152,7 +184,7 @@
         const payload = await rentalResponse.json().catch(()=>({}));
         if (!rentalResponse.ok) throw new Error(payload.error || payload.message || 'Rental could not be completed.');
         closeRentalDialog();
-        showRentalDialog({title:'Rental successful',subtitle:`${name} has been added to your machines. Your daily income is ${formatDaily(income,days)}.`,stats:[{label:'Rental fee',value:money(fee)},{label:'Daily income',value:formatDaily(income,days),className:'income'},{label:'Rental term',value:`${days} days`},{label:'Total return',value:money(income),className:'income'}]});
+        showRentalDialog({title:'Rental successful',subtitle:`${name} has been added to your machines.`,stats:[{label:'Rental fee',value:money(fee)},{label:'Daily income',value:formatDaily(income,days),className:'income'},{label:'Rental period',value:`${days} days`},{label:'Total return',value:money(income),className:'income'}]});
         setTimeout(()=>window.location.reload(),1400);
       }
     });
