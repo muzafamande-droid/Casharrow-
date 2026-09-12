@@ -20,14 +20,16 @@ async function getSettings(){
   return created.rows[0];
 }
 
-// Safe public read: only exposes payment instructions, never secrets or database details.
+// Public/member-safe read: NEVER expose receiving phone numbers.
+// Members only need to know whether deposits are enabled and any generic instructions.
 router.get("/payment-settings", async (req,res)=>{
   try{
     const s=await getSettings();
-    res.json({success:true,settings:{enabled:s.enabled,mtnNumber:s.mtn_number,airtelNumber:s.airtel_number,instructions:s.instructions,updatedAt:s.updated_at}});
+    res.json({success:true,settings:{enabled:s.enabled,instructions:s.instructions,updatedAt:s.updated_at}});
   }catch(error){console.error("Payment settings read failed:",error);res.status(500).json({success:false,message:"Unable to load payment settings"});}
 });
 
+// Only an authenticated administrator may read the actual receiving accounts.
 router.get("/admin/payment-settings",auth,admin,async(req,res)=>{
   try{const s=await getSettings();res.json({success:true,settings:s});}catch(error){console.error("Admin payment settings read failed:",error);res.status(500).json({success:false,message:"Unable to load payment settings"});}
 });
@@ -40,8 +42,8 @@ router.put("/admin/payment-settings",auth,admin,async(req,res)=>{
   if(mtn.length>40||airtel.length>40) return res.status(400).json({success:false,message:"Payment number is too long"});
   if(enabled && !mtn && !airtel) return res.status(400).json({success:false,message:"Add at least one receiving number before enabling deposits"});
   try{
-    const r=await db.query(`INSERT INTO payment_settings (id,enabled,mtn_number,airtel_number,instructions,updated_at) VALUES (1,$1,$2,$3,$4,NOW()) ON CONFLICT (id) DO UPDATE SET enabled=EXCLUDED.enabled,mtn_number=EXCLUDED.mtn_number,airtel_number=EXCLUDED.airtel_number,instructions=EXCLUDED.instructions,updated_at=NOW() RETURNING *`,[enabled,mtn,airtel,instructions]);
-    res.json({success:true,message:"Payment receiving settings saved",settings:r.rows[0]});
+    const r=await db.query(`INSERT INTO payment_settings (id,enabled,mtn_number,airtel_number,instructions,updated_at) VALUES (1,$1,$2,$3,$4,NOW()) ON CONFLICT (id) DO UPDATE SET enabled=EXCLUDED.enabled,mtn_number=EXCLUDED.mtn_number,airtel_number=EXCLUDED.airtel_number,instructions=EXCLUDED.instructions,updated_at=NOW()`,[enabled,mtn,airtel,instructions]);
+    res.json({success:true,message:"Payment receiving settings saved",settings:{enabled,instructions,updatedAt:new Date().toISOString()}});
   }catch(error){console.error("Payment settings save failed:",error);res.status(500).json({success:false,message:"Unable to save payment settings"});}
 });
 
