@@ -45,28 +45,27 @@ function normalizePhone(phone) {
   throw new Error("Mobile Money number must be a valid Uganda number");
 }
 
-let mtnTokenCache = { token: null, expiresAt: 0, type: null };
+function mtnConfigured(type) {
+  const prefix = type === "collection" ? "MTN_COLLECTION" : "MTN_DISBURSEMENT";
+  return Boolean(process.env[`${prefix}_API_USER`] && process.env[`${prefix}_API_KEY`] && process.env[`${prefix}_SUBSCRIPTION_KEY`]);
+}
+
+let mtnTokenCache = {};
 async function mtnToken(type) {
   const prefix = type === "collection" ? "MTN_COLLECTION" : "MTN_DISBURSEMENT";
   const cached = mtnTokenCache[type];
   if (cached?.token && cached.expiresAt > Date.now() + 30000) return cached.token;
-
   requireEnv([`${prefix}_API_USER`, `${prefix}_API_KEY`, `${prefix}_SUBSCRIPTION_KEY`], "MTN");
   const base = process.env.MTN_MOMO_BASE_URL || "https://sandbox.momodeveloper.mtn.com";
   const target = process.env.MTN_MOMO_TARGET_ENV || "sandbox";
   const basic = Buffer.from(`${process.env[`${prefix}_API_USER`]}:${process.env[`${prefix}_API_KEY`]}`).toString("base64");
   const response = await request(`${base}/${type === "collection" ? "collection" : "disbursement"}/token/`, {
     method: "POST",
-    headers: jsonHeaders({
-      Authorization: `Basic ${basic}`,
-      "Ocp-Apim-Subscription-Key": process.env[`${prefix}_SUBSCRIPTION_KEY`],
-      "X-Target-Environment": target
-    })
+    headers: jsonHeaders({ Authorization: `Basic ${basic}`, "Ocp-Apim-Subscription-Key": process.env[`${prefix}_SUBSCRIPTION_KEY`], "X-Target-Environment": target })
   });
-  const token = response.access_token;
-  if (!token) throw new Error("MTN did not return an access token");
-  mtnTokenCache[type] = { token, expiresAt: Date.now() + Number(response.expires_in || 3600) * 1000, type };
-  return token;
+  if (!response.access_token) throw new Error("MTN did not return an access token");
+  mtnTokenCache[type] = { token: response.access_token, expiresAt: Date.now() + Number(response.expires_in || 3600) * 1000 };
+  return response.access_token;
 }
 
 async function mtnCollect({ amount, phone, reference, externalId }) {
@@ -77,21 +76,8 @@ async function mtnCollect({ amount, phone, reference, externalId }) {
   const providerReference = externalId || uuid();
   await request(`${base}/collection/v1_0/requesttopay`, {
     method: "POST",
-    headers: jsonHeaders({
-      Authorization: `Bearer ${token}`,
-      "Ocp-Apim-Subscription-Key": process.env.MTN_COLLECTION_SUBSCRIPTION_KEY,
-      "X-Target-Environment": target,
-      "X-Reference-Id": providerReference,
-      "X-Callback-Url": process.env.MTN_COLLECTION_CALLBACK_URL || ""
-    }),
-    body: JSON.stringify({
-      amount: String(amount),
-      currency: UGX,
-      externalId: reference || providerReference,
-      payer: { partyIdType: "MSISDN", partyId: normalizePhone(phone) },
-      payerMessage: process.env.MTN_COLLECTION_PAYER_MESSAGE || "AVEILOT deposit",
-      payeeNote: process.env.MTN_COLLECTION_PAYEE_NOTE || "AVEILOT deposit"
-    })
+    headers: jsonHeaders({ Authorization: `Bearer ${token}`, "Ocp-Apim-Subscription-Key": process.env.MTN_COLLECTION_SUBSCRIPTION_KEY, "X-Target-Environment": target, "X-Reference-Id": providerReference, ...(process.env.MTN_COLLECTION_CALLBACK_URL ? { "X-Callback-Url": process.env.MTN_COLLECTION_CALLBACK_URL } : {}) }),
+    body: JSON.stringify({ amount: String(amount), currency: UGX, externalId: reference || providerReference, payer: { partyIdType: "MSISDN", partyId: normalizePhone(phone) }, payerMessage: process.env.MTN_COLLECTION_PAYER_MESSAGE || "AVEILOT deposit", payeeNote: process.env.MTN_COLLECTION_PAYEE_NOTE || "AVEILOT deposit" })
   });
   return { providerReference, status: "pending" };
 }
@@ -103,10 +89,7 @@ async function mtnStatus(type, providerReference) {
   const target = process.env.MTN_MOMO_TARGET_ENV || "sandbox";
   const token = await mtnToken(type);
   const endpoint = type === "collection" ? `collection/v1_0/requesttopay/${encodeURIComponent(providerReference)}` : `disbursement/v1_0/transfer/${encodeURIComponent(providerReference)}`;
-  const data = await request(`${base}/${endpoint}`, {
-    method: "GET",
-    headers: jsonHeaders({ Authorization: `Bearer ${token}`, "Ocp-Apim-Subscription-Key": process.env[`${prefix}_SUBSCRIPTION_KEY`], "X-Target-Environment": target })
-  });
+  const data = await request(`${base}/${endpoint}`, { method: "GET", headers: jsonHeaders({ Authorization: `Bearer ${token}`, "Ocp-Apim-Subscription-Key": process.env[`${prefix}_SUBSCRIPTION_KEY`], "X-Target-Environment": target }) });
   const raw = String(data?.status || data?.financialTransactionStatus || "").toLowerCase();
   if (["successful", "success", "completed"].includes(raw)) return { status: "successful", raw: data };
   if (["failed", "rejected", "cancelled"].includes(raw)) return { status: "failed", raw: data };
@@ -121,80 +104,45 @@ async function mtnDisburse({ amount, phone, reference, externalId }) {
   const providerReference = externalId || uuid();
   await request(`${base}/disbursement/v1_0/transfer`, {
     method: "POST",
-    headers: jsonHeaders({
-      Authorization: `Bearer ${token}`,
-      "Ocp-Apim-Subscription-Key": process.env.MTN_DISBURSEMENT_SUBSCRIPTION_KEY,
-      "X-Target-Environment": target,
-      "X-Reference-Id": providerReference,
-      "X-Callback-Url": process.env.MTN_DISBURSEMENT_CALLBACK_URL || ""
-    }),
-    body: JSON.stringify({
-      amount: String(amount),
-      currency: UGX,
-      externalId: reference || providerReference,
-      payee: { partyIdType: "MSISDN", partyId: normalizePhone(phone) },
-      payerMessage: process.env.MTN_DISBURSEMENT_PAYER_MESSAGE || "AVEILOT withdrawal",
-      payeeNote: process.env.MTN_DISBURSEMENT_PAYEE_NOTE || "AVEILOT withdrawal"
-    })
+    headers: jsonHeaders({ Authorization: `Bearer ${token}`, "Ocp-Apim-Subscription-Key": process.env.MTN_DISBURSEMENT_SUBSCRIPTION_KEY, "X-Target-Environment": target, "X-Reference-Id": providerReference, ...(process.env.MTN_DISBURSEMENT_CALLBACK_URL ? { "X-Callback-Url": process.env.MTN_DISBURSEMENT_CALLBACK_URL } : {}) }),
+    body: JSON.stringify({ amount: String(amount), currency: UGX, externalId: reference || providerReference, payee: { partyIdType: "MSISDN", partyId: normalizePhone(phone) }, payerMessage: process.env.MTN_DISBURSEMENT_PAYER_MESSAGE || "AVEILOT withdrawal", payeeNote: process.env.MTN_DISBURSEMENT_PAYEE_NOTE || "AVEILOT withdrawal" })
   });
   return { providerReference, status: "pending" };
 }
 
 let airtelTokenCache = { token: null, expiresAt: 0 };
+function airtelConfigured() {
+  return Boolean(process.env.AIRTEL_CLIENT_ID && process.env.AIRTEL_CLIENT_SECRET && process.env.AIRTEL_PUBLIC_KEY);
+}
 async function airtelToken() {
   requireEnv(["AIRTEL_CLIENT_ID", "AIRTEL_CLIENT_SECRET", "AIRTEL_PUBLIC_KEY"], "Airtel");
   if (airtelTokenCache.token && airtelTokenCache.expiresAt > Date.now() + 30000) return airtelTokenCache.token;
   const base = process.env.AIRTEL_API_BASE_URL || "https://openapi.airtel.africa";
-  const data = await request(`${base}/auth/oauth2/token`, {
-    method: "POST",
-    headers: jsonHeaders(),
-    body: JSON.stringify({ client_id: process.env.AIRTEL_CLIENT_ID, client_secret: process.env.AIRTEL_CLIENT_SECRET, grant_type: "client_credentials" })
-  });
+  const data = await request(`${base}/auth/oauth2/token`, { method: "POST", headers: jsonHeaders(), body: JSON.stringify({ client_id: process.env.AIRTEL_CLIENT_ID, client_secret: process.env.AIRTEL_CLIENT_SECRET, grant_type: "client_credentials" }) });
   if (!data.access_token) throw new Error("Airtel did not return an access token");
   airtelTokenCache = { token: data.access_token, expiresAt: Date.now() + Number(data.expires_in || 3600) * 1000 };
   return data.access_token;
 }
-
 async function airtelRequest(path, body) {
   const base = process.env.AIRTEL_API_BASE_URL || "https://openapi.airtel.africa";
   const token = await airtelToken();
-  return request(`${base}${path}`, {
-    method: "POST",
-    headers: jsonHeaders({ Authorization: `Bearer ${token}`, "X-Country": "UG", "X-Currency": UGX, "X-Client-Id": process.env.AIRTEL_CLIENT_ID }),
-    body: JSON.stringify(body)
-  });
+  return request(`${base}${path}`, { method: "POST", headers: jsonHeaders({ Authorization: `Bearer ${token}`, "X-Country": "UG", "X-Currency": UGX, "X-Client-Id": process.env.AIRTEL_CLIENT_ID }), body: JSON.stringify(body) });
 }
-
 async function airtelCollect({ amount, phone, reference, externalId }) {
   const providerReference = externalId || uuid();
-  await airtelRequest(process.env.AIRTEL_COLLECTION_PATH || "/merchant/v1/payments/", {
-    reference: reference || providerReference,
-    subscriber: { country: "UG", currency: UGX, msisdn: normalizePhone(phone).replace(/^256/, "") },
-    transaction: { amount: Number(amount), country: "UG", currency: UGX, id: providerReference }
-  });
+  await airtelRequest(process.env.AIRTEL_COLLECTION_PATH || "/merchant/v1/payments/", { reference: reference || providerReference, subscriber: { country: "UG", currency: UGX, msisdn: normalizePhone(phone).replace(/^256/, "") }, transaction: { amount: Number(amount), country: "UG", currency: UGX, id: providerReference } });
   return { providerReference, status: "pending" };
 }
-
 async function airtelDisburse({ amount, phone, reference, externalId }) {
   const providerReference = externalId || uuid();
-  await airtelRequest(process.env.AIRTEL_DISBURSEMENT_PATH || "/standard/v1/disbursements/", {
-    payee: { msisdn: normalizePhone(phone).replace(/^256/, "") },
-    reference: reference || providerReference,
-    transaction: { amount: Number(amount), id: providerReference, type: "B2C", currency: UGX }
-  });
+  await airtelRequest(process.env.AIRTEL_DISBURSEMENT_PATH || "/standard/v1/disbursements/", { payee: { msisdn: normalizePhone(phone).replace(/^256/, "") }, reference: reference || providerReference, transaction: { amount: Number(amount), id: providerReference, type: "B2C", currency: UGX } });
   return { providerReference, status: "pending" };
 }
-
 async function airtelStatus(type, providerReference) {
   const base = process.env.AIRTEL_API_BASE_URL || "https://openapi.airtel.africa";
   const token = await airtelToken();
-  const path = type === "collection"
-    ? `${process.env.AIRTEL_COLLECTION_STATUS_PATH || "/standard/v1/payments/"}${encodeURIComponent(providerReference)}`
-    : `${process.env.AIRTEL_DISBURSEMENT_STATUS_PATH || "/standard/v1/disbursements/"}${encodeURIComponent(providerReference)}`;
-  const data = await request(`${base}${path}`, {
-    method: "GET",
-    headers: jsonHeaders({ Authorization: `Bearer ${token}`, "X-Country": "UG", "X-Currency": UGX, "X-Client-Id": process.env.AIRTEL_CLIENT_ID })
-  });
+  const path = type === "collection" ? `${process.env.AIRTEL_COLLECTION_STATUS_PATH || "/standard/v1/payments/"}${encodeURIComponent(providerReference)}` : `${process.env.AIRTEL_DISBURSEMENT_STATUS_PATH || "/standard/v1/disbursements/"}${encodeURIComponent(providerReference)}`;
+  const data = await request(`${base}${path}`, { method: "GET", headers: jsonHeaders({ Authorization: `Bearer ${token}`, "X-Country": "UG", "X-Currency": UGX, "X-Client-Id": process.env.AIRTEL_CLIENT_ID }) });
   const code = String(data?.status?.code || data?.status?.response_code || data?.transaction?.status || "").toUpperCase();
   const message = String(data?.status?.message || "").toLowerCase();
   if (code === "200" || ["SUCCESS", "SUCCESSFUL", "COMPLETED"].includes(code) || message.includes("success")) return { status: "successful", raw: data };
@@ -202,39 +150,34 @@ async function airtelStatus(type, providerReference) {
   return { status: "pending", raw: data };
 }
 
-function providerConfigured(network) {
+function providerConfigured(network, operation = "collection") {
   const n = String(network || "").toUpperCase();
-  if (n === "MTN") return Boolean(process.env.MTN_COLLECTION_API_USER && process.env.MTN_COLLECTION_API_KEY && process.env.MTN_COLLECTION_SUBSCRIPTION_KEY);
-  if (n === "AIRTEL") return Boolean(process.env.AIRTEL_CLIENT_ID && process.env.AIRTEL_CLIENT_SECRET && process.env.AIRTEL_PUBLIC_KEY);
+  if (n === "MTN") return mtnConfigured(operation === "disbursement" ? "disbursement" : "collection");
+  if (n === "AIRTEL") return airtelConfigured();
   return false;
 }
-
 function status() {
   return {
     automationEnabled: automationEnabled(),
-    mtn: { configured: providerConfigured("MTN"), targetEnvironment: process.env.MTN_MOMO_TARGET_ENV || "sandbox" },
-    airtel: { configured: providerConfigured("AIRTEL"), targetEnvironment: process.env.AIRTEL_TARGET_ENV || "live" }
+    mtn: { collectionConfigured: mtnConfigured("collection"), disbursementConfigured: mtnConfigured("disbursement"), targetEnvironment: process.env.MTN_MOMO_TARGET_ENV || "sandbox" },
+    airtel: { collectionConfigured: airtelConfigured(), disbursementConfigured: airtelConfigured(), targetEnvironment: process.env.AIRTEL_TARGET_ENV || "live" }
   };
 }
-
 async function collect(args) {
   if (!automationEnabled()) throw new Error("Payment automation is disabled");
   if (String(args.network).toUpperCase() === "MTN") return mtnCollect(args);
   if (String(args.network).toUpperCase() === "AIRTEL") return airtelCollect(args);
   throw new Error("Unsupported Mobile Money network");
 }
-
 async function disburse(args) {
   if (!automationEnabled()) throw new Error("Payment automation is disabled");
   if (String(args.network).toUpperCase() === "MTN") return mtnDisburse(args);
   if (String(args.network).toUpperCase() === "AIRTEL") return airtelDisburse(args);
   throw new Error("Unsupported Mobile Money network");
 }
-
 async function getStatus(network, type, providerReference) {
   if (String(network).toUpperCase() === "MTN") return mtnStatus(type, providerReference);
   if (String(network).toUpperCase() === "AIRTEL") return airtelStatus(type, providerReference);
   throw new Error("Unsupported Mobile Money network");
 }
-
 module.exports = { automationEnabled, providerConfigured, status, collect, disburse, getStatus, normalizePhone };
