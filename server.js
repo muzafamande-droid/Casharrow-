@@ -3,6 +3,7 @@ const db = require("./database-pg");
 const rental = require("./rental-routes");
 const rentalEarningsApi = require("./rental-earnings-api");
 const { startRentalEarningsWorker } = require("./rental-earnings-worker");
+const { startPaymentProviderWorker } = require("./mobile-money-provider-worker");
 
 const PORT = Number(process.env.PORT || 3000);
 
@@ -15,6 +16,7 @@ async function start() {
     console.log(`AVEILOT production server listening on port ${PORT}`);
   });
   startRentalEarningsWorker();
+  startPaymentProviderWorker();
 }
 
 start().catch(error => {
