@@ -4,6 +4,7 @@ const rental = require("./rental-routes");
 const rentalEarningsApi = require("./rental-earnings-api");
 const { startRentalEarningsWorker } = require("./rental-earnings-worker");
 const { startPaymentProviderWorker } = require("./mobile-money-provider-worker");
+const { ensureSupportSchema } = require("./support-schema");
 
 const PORT = Number(process.env.PORT || 3000);
 
@@ -11,6 +12,7 @@ app.use(rentalEarningsApi);
 
 async function start() {
   await db.init();
+  await ensureSupportSchema();
   await rental.ready();
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`AVEILOT production server listening on port ${PORT}`);
