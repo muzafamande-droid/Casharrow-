@@ -9,7 +9,6 @@ const withdrawal = require("./withdrawal-routes");
 const mobileMoney = require("./mobile-money-sandbox-routes");
 const pgFinancial = require("./pg-financial-routes");
 const adminProducts = require("./admin-product-routes");
-const { startRentalExpiryWorker } = require("./rental-expiry-worker");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -29,10 +28,19 @@ app.get("/admin.html", (req,res)=>{try{const file=path.join(__dirname,"public","
 
 app.use(express.static(path.join(__dirname,"public"),{index:false}));
 app.get("/api/status",async(req,res)=>{try{await db.query("SELECT 1");res.json({success:true,message:"AVEILOT server is running",database:"connected",environment:process.env.NODE_ENV||"development"});}catch(error){console.error("Health check failed:",error);res.status(503).json({success:false,message:"AVEILOT database is unavailable"});}});
+
+// Daily earnings are now the only rental payout mechanism. The legacy manual
+// completion endpoint must never issue the old full return amount.
+app.post("/api/rentals/:id/complete", (req, res) => {
+  res.status(410).json({
+    success: false,
+    message: "Manual rental completion is disabled. Rental income is credited automatically each day."
+  });
+});
+
 app.use("/api",accountPg.router);app.use("/api",memberPg.router);app.use("/api",pgFinancial.router);app.use("/api",rental.router);app.use("/api",withdrawal.router);app.use("/api",mobileMoney.router);app.use("/api",adminProducts.router);
 
 app.get("/",(req,res)=>{const file=path.join(__dirname,"public","index.html");let html=fs.readFileSync(file,"utf8");const scripts='<script src="/guest-home-polish.js?v=1"></script><script src="/aveilot-auth-polish.js?v=1"></script>';html=html.replace("</body>",`${scripts}${AVEILOT_BRANDING_SCRIPT}</body>`);res.set("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");res.set("Pragma","no-cache");res.set("Expires","0");res.type("html").send(html);});
 app.use((req,res)=>res.status(404).json({success:false,message:"Endpoint not found"}));
-async function start(){await db.init();await rental.ready();app.listen(PORT,"0.0.0.0",()=>{console.log(`AVEILOT production server listening on port ${PORT}`)});startRentalExpiryWorker();}
-if(require.main===module){start().catch(error=>{console.error("AVEILOT startup failed:",error);process.exit(1);});}
+
 module.exports=app;
