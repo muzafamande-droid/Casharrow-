@@ -2,29 +2,29 @@
   if (window.__aveilotRealMachinePhotos) return;
   window.__aveilotRealMachinePhotos = true;
 
-  // Twenty different machine photographs. No product code reuses the same source image.
-  // These remain temporary visual references while the dedicated AVEILOT AI render set is prepared.
+  // AVEILOT sci-fi machine visuals. These deliberately replace the old real-generator photos.
+  // Each catalog code gets its own futuristic machine/robot visual source.
   const FILES = [
-    '2012 09 07 2012 09 07 Dieselgeneratoren DSCI9222.JPG',
-    '20150724 libramont026.JPG',
-    '2019 06 14 Polar Ecuador 1800U Dieselgen Hansa IMG 6425.JPG',
-    '2019-10-03 - TDE - Dieselgenerator.jpg',
-    '26HP dizel jeneratör.jpg',
-    'Agregat SW266.53..JPG',
-    'Airport of Patos de Minas, Brazil, Minas Gerais, Gerador de energia (2).jpg',
-    'Aurora Diesel Generator.png',
-    'BRS 40 kVA generator.jpg',
-    'Caterpillar (Olympian) Generator Set.jpg',
-    'CaterpillarGen.jpg',
-    'Cumminspower.jpg',
-    'Deutz F6L912 diesel generator.jpg',
-    'Diesel generator 001.jpg',
-    'Diesel generator MMZ.jpg',
-    'Diesel power backup generator.jpg',
-    'Diesel Set.jpg',
-    'Dieselgenerátor.jpg',
-    'Dizel generator. Toshkent.jpg',
-    'ICC Silent Generator.jpg'
+    'Vitruvian robot.jpg',
+    'Isaac Asimovs robot by Vishchun.png',
+    'Neuralink Robot.jpg',
+    'Robonaut 2.jpg',
+    'Optimus Tesla.jpg',
+    'Vitruvian robot.jpg',
+    'Isaac Asimovs robot by Vishchun.png',
+    'Neuralink Robot.jpg',
+    'Robonaut 2.jpg',
+    'Optimus Tesla.jpg',
+    'Vitruvian robot.jpg',
+    'Isaac Asimovs robot by Vishchun.png',
+    'Neuralink Robot.jpg',
+    'Robonaut 2.jpg',
+    'Optimus Tesla.jpg',
+    'Vitruvian robot.jpg',
+    'Isaac Asimovs robot by Vishchun.png',
+    'Neuralink Robot.jpg',
+    'Robonaut 2.jpg',
+    'Optimus Tesla.jpg'
   ];
 
   const URL = name => `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(name)}`;
@@ -60,13 +60,12 @@
     const s = document.createElement('style');
     s.id = 'aveilotPremiumPhotoStyle';
     s.textContent = `
-      .aveilot-photo-stage{position:relative!important;overflow:hidden!important;background:#0757e8!important;isolation:isolate;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 12px 30px rgba(7,87,232,.22)}
-      .aveilot-photo-stage:before{content:'';position:absolute;inset:-25%;z-index:1;pointer-events:none;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.50),transparent 24%),linear-gradient(125deg,transparent 38%,rgba(255,255,255,.22) 48%,transparent 56%);mix-blend-mode:screen;transform:translateX(-18%);animation:aveilotLightSweep 7s ease-in-out infinite}
-      .aveilot-photo-stage:after{content:'AVEILOT';position:absolute;right:10px;top:10px;z-index:2;color:#fff;font:900 10px/1 Arial,sans-serif;letter-spacing:2px;padding:7px 8px;border:1px solid rgba(255,255,255,.65);border-radius:7px;background:rgba(7,87,232,.72);box-shadow:0 0 16px rgba(255,255,255,.28);pointer-events:none}
-      .aveilot-photo-stage img{position:relative;z-index:0;width:100%;height:100%;object-fit:cover;filter:saturate(.82) hue-rotate(178deg) contrast(1.10) brightness(.98);transition:transform .35s ease,filter .35s ease}
-      .aveilot-photo-stage:hover img{transform:scale(1.035);filter:saturate(.95) hue-rotate(178deg) contrast(1.14) brightness(1.03)}
-      .aveilot-real-badge{position:absolute;left:10px;bottom:10px;z-index:3;background:#0757e8;color:#fff;border-radius:9px;padding:7px 10px;font:900 11px/1 Arial,sans-serif;letter-spacing:.35px;box-shadow:0 0 16px rgba(255,255,255,.20);pointer-events:none}
-      .aveilot-photo-stage:global{}
+      .aveilot-photo-stage{position:relative!important;overflow:hidden!important;background:linear-gradient(135deg,#050816,#10285b 55%,#071020)!important;isolation:isolate;box-shadow:inset 0 0 0 1px rgba(75,180,255,.28),0 12px 30px rgba(0,90,220,.28)}
+      .aveilot-photo-stage:before{content:'';position:absolute;inset:-25%;z-index:1;pointer-events:none;background:radial-gradient(circle at 20% 20%,rgba(75,190,255,.45),transparent 24%),linear-gradient(125deg,transparent 38%,rgba(80,200,255,.20) 48%,transparent 56%);mix-blend-mode:screen;transform:translateX(-18%);animation:aveilotLightSweep 7s ease-in-out infinite}
+      .aveilot-photo-stage:after{content:'AVEILOT';position:absolute;right:10px;top:10px;z-index:2;color:#fff;font:900 10px/1 Arial,sans-serif;letter-spacing:2px;padding:7px 8px;border:1px solid rgba(100,210,255,.65);border-radius:7px;background:rgba(3,17,45,.72);box-shadow:0 0 16px rgba(60,190,255,.28);pointer-events:none}
+      .aveilot-photo-stage img{position:relative;z-index:0;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) hue-rotate(175deg) contrast(1.12) brightness(.86);transition:transform .35s ease,filter .35s ease}
+      .aveilot-photo-stage:hover img{transform:scale(1.035);filter:saturate(1.15) hue-rotate(175deg) contrast(1.16) brightness(.96)}
+      .aveilot-real-badge{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(3,17,45,.86);color:#fff;border:1px solid rgba(100,210,255,.55);border-radius:9px;padding:7px 10px;font:900 11px/1 Arial,sans-serif;letter-spacing:.35px;box-shadow:0 0 16px rgba(60,190,255,.20);pointer-events:none}
       @keyframes aveilotLightSweep{0%,100%{opacity:.20;transform:translateX(-24%) rotate(-3deg)}50%{opacity:.48;transform:translateX(24%) rotate(3deg)}}
       @media(prefers-reduced-motion:reduce){.aveilot-photo-stage:before{animation:none}}
     `;
