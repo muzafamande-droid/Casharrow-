@@ -4,7 +4,8 @@ const db = require("./database-pg");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
-const REFERRAL_RATES = [0.20, 0.0666666667, 0.0333333333];
+// AVEILOT referral rule: only the person who directly referred the renter earns 10% of the rental fee.
+const REFERRAL_RATES = [0.10];
 
 function personalWelcomeBonus(fee) {
   if (fee >= 1000000) return 100000;
