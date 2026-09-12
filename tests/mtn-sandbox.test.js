@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { afterEach } = require("node:test");
 
 process.env.MTN_ENVIRONMENT = "sandbox";
 delete process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED;
