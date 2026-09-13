@@ -38,5 +38,11 @@ body{background:radial-gradient(circle at 50% -10%,rgba(0,126,255,.20),transpare
 .referral-main-actions .copy{background:#071a38!important;border:1px solid rgba(82,190,255,.24)!important;color:#dff7ff!important}
 .ca-rental-catalog{background:transparent!important;color:#eef8ff!important}
 .ca-rental-catalog *{scrollbar-color:#0a76c9 #031127}
+.ca-rental-item{background:linear-gradient(145deg,rgba(8,31,65,.90),rgba(3,17,39,.94))!important;border:1px solid rgba(82,190,255,.18)!important;border-radius:18px!important;color:#eef8ff!important;box-shadow:0 10px 28px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.035)!important}
+.ca-rental-item h3{color:#f3fbff!important}.ca-rental-item p{color:rgba(220,237,250,.66)!important}.ca-rental-head h2{color:#f3fbff!important}.ca-rental-head span{color:#8fa8c4!important}
+.ca-status{background:rgba(22,191,145,.12)!important;color:#6ff0bf!important;border:1px solid rgba(22,191,145,.22)!important}
+.ca-rental-actions button{background:linear-gradient(135deg,#0757e8,#08aeea)!important;color:#fff!important;border:1px solid rgba(110,224,255,.35)!important}
+.aveilot-earning-panel{background:linear-gradient(145deg,rgba(7,30,63,.90),rgba(3,17,38,.96))!important;border:1px solid rgba(82,190,255,.18)!important;color:#eaf7ff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important}
+.aveilot-earning-panel strong{color:#fff!important}.aveilot-earning-panel div{color:rgba(220,237,250,.72)!important}.aveilot-earning-panel b{color:#8fe8ff!important}
 @keyframes avBlueDrift{from{transform:translate3d(-2%,0,0) scale(1)}to{transform:translate3d(2%,2%,0) scale(1.08)}}
-@media(max-width:480px){.container{padding-left:11px!important;padding-right:11px!important}.hero{border-radius:22px}.panel{border-radius:18px}}
+@media(max-width:480px){.container{padding-left:11px!important;padding-right:11px!important}.hero{border-radius:22px}.panel{border-radius:18px}.ca-rental-item{padding:13px!important}}
