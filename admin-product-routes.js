@@ -40,6 +40,7 @@ function cleanProduct(body) {
   const fee = Number(body.rental_fee);
   const days = Number(body.rental_days);
   const returnAmount = Number(body.return_amount);
+  const inventoryTotal = body.inventory_total === undefined ? 5 : Number(body.inventory_total);
   const active = parseBoolean(body.active, true);
   const featured = parseBoolean(body.featured, false);
   if (!/^[A-Z]$/.test(series)) return { error: "Series must be one letter" };
@@ -48,14 +49,17 @@ function cleanProduct(body) {
   if (!Number.isFinite(fee) || fee <= 0) return { error: "Rental fee must be greater than zero" };
   if (!Number.isInteger(days) || days <= 0) return { error: "Rental days must be a positive integer" };
   if (!Number.isFinite(returnAmount) || returnAmount < 0) return { error: "Return amount must be zero or greater" };
+  if (!Number.isInteger(inventoryTotal) || inventoryTotal < 0) return { error: "Stock must be a whole number of 0 or more" };
   if (active === null) return { error: "Invalid active value" };
   if (featured === null) return { error: "Invalid featured value" };
-  return { series, code, name, description, imageUrl: imageUrl || null, fee, days, returnAmount, active, featured };
+  return { series, code, name, description, imageUrl: imageUrl || null, fee, days, returnAmount, inventoryTotal, active, featured };
 }
+
+const PRODUCT_SELECT = `SELECT p.id, p.series, p.code, p.name, p.description, p.image_url, p.rental_fee, p.rental_days, p.return_amount, p.active, p.featured, p.inventory_total, COUNT(r.id)::int AS sold_count, GREATEST(p.inventory_total - COUNT(r.id)::int, 0)::int AS available_count FROM products p LEFT JOIN rentals r ON r.product_id = p.id`;
 
 router.get("/admin/products", requireAdmin, async (req, res) => {
   try {
-    const result = await db.query("SELECT id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured, created_at FROM products ORDER BY series, id");
+    const result = await db.query(`${PRODUCT_SELECT} GROUP BY p.id ORDER BY p.series, p.id`);
     res.json({ success: true, products: result.rows });
   } catch (error) {
     console.error("Admin products lookup failed:", error);
@@ -67,10 +71,10 @@ router.post("/admin/products", requireAdmin, async (req, res) => {
   const p = cleanProduct(req.body || {});
   if (p.error) return res.status(400).json({ success: false, message: p.error });
   try {
-    const result = await db.query(`INSERT INTO products (id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured)
-      VALUES (nextval('casharrow_products_id_seq'), $1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-      RETURNING id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured`,
-      [p.series,p.code,p.name,p.description,p.imageUrl,p.fee,p.days,p.returnAmount,p.active,p.featured]);
+    const result = await db.query(`INSERT INTO products (id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured, inventory_total)
+      VALUES (nextval('casharrow_products_id_seq'), $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      RETURNING id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured, inventory_total`,
+      [p.series,p.code,p.name,p.description,p.imageUrl,p.fee,p.days,p.returnAmount,p.active,p.featured,p.inventoryTotal]);
     res.status(201).json({ success: true, product: result.rows[0] });
   } catch (error) {
     if (error.code === "23505") return res.status(409).json({ success: false, message: "A product with that code already exists" });
@@ -85,9 +89,12 @@ router.patch("/admin/products/:id", requireAdmin, async (req, res) => {
   const p = cleanProduct(req.body || {});
   if (p.error) return res.status(400).json({ success: false, message: p.error });
   try {
-    const result = await db.query(`UPDATE products SET series=$1, code=$2, name=$3, description=$4, image_url=$5, rental_fee=$6, rental_days=$7, return_amount=$8, active=$9, featured=$10 WHERE id=$11
-      RETURNING id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured`,
-      [p.series,p.code,p.name,p.description,p.imageUrl,p.fee,p.days,p.returnAmount,p.active,p.featured,id]);
+    const current = await db.query("SELECT COUNT(*)::int AS sold_count FROM rentals WHERE product_id = $1", [id]);
+    if (!current.rowCount) return res.status(404).json({ success: false, message: "Product not found" });
+    if (p.inventoryTotal < Number(current.rows[0].sold_count)) return res.status(409).json({ success: false, message: `Stock cannot be below the ${current.rows[0].sold_count} machines already rented.` });
+    const result = await db.query(`UPDATE products SET series=$1, code=$2, name=$3, description=$4, image_url=$5, rental_fee=$6, rental_days=$7, return_amount=$8, active=$9, featured=$10, inventory_total=$11 WHERE id=$12
+      RETURNING id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured, inventory_total`,
+      [p.series,p.code,p.name,p.description,p.imageUrl,p.fee,p.days,p.returnAmount,p.active,p.featured,p.inventoryTotal,id]);
     if (!result.rowCount) return res.status(404).json({ success: false, message: "Product not found" });
     res.json({ success: true, product: result.rows[0] });
   } catch (error) {
