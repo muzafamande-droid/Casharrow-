@@ -1,0 +1,42 @@
+/* AVEILOT Deep Blue member interface
+   Visual-only layer: does not change rental, wallet, referral, task, or payment logic. */
+:root{color-scheme:dark}
+html,body{background:#020b1c!important;color:#eef7ff!important}
+body{background:radial-gradient(circle at 50% -10%,rgba(0,126,255,.20),transparent 34%),linear-gradient(180deg,#020b1c 0%,#03132d 48%,#020a18 100%)!important}
+.container{background:transparent!important}
+.hero{background:linear-gradient(145deg,#061a3a 0%,#073d86 52%,#087dce 100%)!important;border:1px solid rgba(83,202,255,.28)!important;box-shadow:0 18px 55px rgba(0,75,170,.28),inset 0 1px 0 rgba(255,255,255,.10)!important;position:relative;overflow:hidden}
+.hero:after{content:'';position:absolute;inset:-50%;background:radial-gradient(circle at 75% 25%,rgba(43,207,255,.20),transparent 24%),radial-gradient(circle at 15% 90%,rgba(54,80,255,.18),transparent 28%);animation:avBlueDrift 9s ease-in-out infinite alternate;pointer-events:none}
+.hero>*{position:relative;z-index:1}
+.title{letter-spacing:-.02em;text-shadow:0 0 22px rgba(50,205,255,.28)}
+.welcome,.label{color:rgba(235,249,255,.72)!important}
+.balance{color:#fff!important;text-shadow:0 0 24px rgba(37,203,255,.32)}
+.quick button,.btn{background:rgba(255,255,255,.08)!important;color:#dff7ff!important;border:1px solid rgba(105,214,255,.25)!important;box-shadow:0 8px 22px rgba(0,35,90,.18)!important;backdrop-filter:blur(12px)}
+.quick .dark,.btn.primary{background:linear-gradient(135deg,#0757e8,#08aeea)!important;color:#fff!important;border-color:rgba(111,224,255,.48)!important;box-shadow:0 10px 28px rgba(0,132,255,.28)!important}
+.panel{background:linear-gradient(145deg,rgba(6,25,55,.96),rgba(3,16,38,.96))!important;border:1px solid rgba(82,190,255,.20)!important;box-shadow:0 14px 40px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.04)!important;color:#eef7ff!important}
+.panel h2,.panel h3{color:#f1fbff!important}
+.info,.empty,.loading,.row small,.card span,.ref-stat span,.ref-step,.referral p{color:rgba(220,237,250,.64)!important}
+.cards .card,.card,.row{background:rgba(8,31,65,.72)!important;border:1px solid rgba(76,184,255,.18)!important;color:#edf8ff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+.card b,.row strong{color:#f3fbff!important}
+.positive{color:#51e1a0!important}.negative{color:#ff7995!important}
+.bottom{background:rgba(2,13,31,.96)!important;border-top:1px solid rgba(80,190,255,.22)!important;box-shadow:0 -12px 32px rgba(0,0,0,.35)!important;backdrop-filter:blur(18px)}
+.nav{color:#6f849d!important}.nav.active{color:#55d9ff!important;text-shadow:0 0 13px rgba(50,210,255,.35)}
+.nav div{filter:drop-shadow(0 0 8px rgba(37,181,255,.15))}
+.modal{background:rgba(0,7,20,.82)!important;backdrop-filter:blur(8px)}
+.modalbox{background:linear-gradient(145deg,#071b3c,#03132c)!important;border:1px solid rgba(78,196,255,.25)!important;box-shadow:0 24px 70px rgba(0,0,0,.50)!important;color:#eef8ff!important}
+.modalbox p,.field label{color:rgba(220,237,250,.68)!important}
+.field input,.field select{background:#061a37!important;color:#eef8ff!important;border:1px solid rgba(82,190,255,.25)!important}
+.notice{background:rgba(15,55,100,.48)!important;color:#cdeaff!important;border:1px solid rgba(82,190,255,.18)!important}
+.referral{background:linear-gradient(145deg,#071d3d,#04132b)!important;border:1px solid rgba(74,195,255,.22)!important;color:#eef8ff!important}
+.referral-hero{background:linear-gradient(145deg,#061a38,#05275a 55%,#06366d)!important;border:1px solid rgba(83,202,255,.28)!important;box-shadow:0 16px 45px rgba(0,45,110,.26)!important;color:#fff!important}
+.referral-hero:after{content:'✦'!important;color:#42d9ff!important;opacity:.18!important}
+.referral-kicker{color:#6edaff!important}.referral-hero h2{color:#fff!important}.referral-hero p{color:rgba(230,245,255,.68)!important}
+.commission{background:rgba(24,200,255,.12)!important;border:1px solid rgba(24,200,255,.28)!important;color:#9be9ff!important}
+.ref-stat{background:rgba(6,30,63,.72)!important;border:1px solid rgba(80,190,255,.18)!important}.ref-stat b{color:#fff!important}
+.ref-step{background:rgba(7,29,59,.72)!important;border:1px solid rgba(80,190,255,.16)!important;color:rgba(220,237,250,.68)!important}
+.referral-link{background:#061a37!important;color:#dff7ff!important;border:1px solid rgba(82,190,255,.24)!important}
+.referral-actions button,.referral-main-actions .share{background:linear-gradient(135deg,#0757e8,#08aeea)!important;color:#fff!important}
+.referral-main-actions .copy{background:#071a38!important;border:1px solid rgba(82,190,255,.24)!important;color:#dff7ff!important}
+.ca-rental-catalog{background:transparent!important;color:#eef8ff!important}
+.ca-rental-catalog *{scrollbar-color:#0a76c9 #031127}
+@keyframes avBlueDrift{from{transform:translate3d(-2%,0,0) scale(1)}to{transform:translate3d(2%,2%,0) scale(1.08)}}
+@media(max-width:480px){.container{padding-left:11px!important;padding-right:11px!important}.hero{border-radius:22px}.panel{border-radius:18px}}
