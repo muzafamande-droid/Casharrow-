@@ -2,8 +2,9 @@
   if (window.__aveilotRealMachinePhotos) return;
   window.__aveilotRealMachinePhotos = true;
 
-  // AVEILOT machine visuals: futuristic power rooms, reactor cores and industrial energy systems.
-  // Sources are free-use StockCake images; the page uses them as visual references for the rental catalog.
+  // AVEILOT machine visuals. A1-C5 keep their existing assignments.
+  // D1-D5 keep the same AVEILOT visual family but receive distinct presentation
+  // treatments so their machines read as different sizes/shapes without changing cards.
   const FILES = [
     'https://images.stockcake.com/public/1/e/6/1e616c57-f289-4d10-9ab9-1bb75b6d4a26_large/futuristic-energy-core-stockcake.jpg',
     'https://images.stockcake.com/public/1/a/7/1a734b73-4db1-42d2-b8b6-a92d8e9341d2_small/futuristic-energy-core-stockcake.jpg',
@@ -69,6 +70,18 @@
       .aveilot-photo-a3 img,.aveilot-photo-b3 img,.aveilot-photo-c3 img,.aveilot-photo-d3 img{object-position:65% center}
       .aveilot-photo-a4 img,.aveilot-photo-b4 img,.aveilot-photo-c4 img,.aveilot-photo-d4 img{object-position:top center}
       .aveilot-photo-a5 img,.aveilot-photo-b5 img,.aveilot-photo-c5 img,.aveilot-photo-d5 img{object-position:bottom center}
+
+      /* D-series only: distinct machine-scale/crop treatments. Cards and A-C remain untouched. */
+      .aveilot-photo-d1 img{transform:scale(1.16);object-position:center 54%;filter:saturate(1.10) contrast(1.10) brightness(.88)}
+      .aveilot-photo-d2 img{transform:scale(1.30);object-position:31% 47%;filter:saturate(1.14) contrast(1.12) brightness(.86)}
+      .aveilot-photo-d3 img{transform:scale(1.08);object-position:69% 58%;filter:saturate(1.06) contrast(1.14) brightness(.90)}
+      .aveilot-photo-d4 img{transform:scale(1.38);object-position:54% 30%;filter:saturate(1.12) contrast(1.15) brightness(.84)}
+      .aveilot-photo-d5 img{transform:scale(1.22);object-position:43% 73%;filter:saturate(1.16) contrast(1.10) brightness(.89)}
+      .aveilot-photo-d1:before{background:radial-gradient(circle at 72% 22%,rgba(70,190,255,.34),transparent 27%),linear-gradient(110deg,transparent 35%,rgba(80,200,255,.13) 49%,transparent 62%)}
+      .aveilot-photo-d2:before{background:radial-gradient(circle at 25% 70%,rgba(75,190,255,.35),transparent 25%),linear-gradient(145deg,transparent 36%,rgba(80,200,255,.14) 50%,transparent 64%)}
+      .aveilot-photo-d3:before{background:radial-gradient(circle at 80% 45%,rgba(70,190,255,.30),transparent 25%),linear-gradient(120deg,transparent 42%,rgba(80,200,255,.16) 51%,transparent 59%)}
+      .aveilot-photo-d4:before{background:radial-gradient(circle at 45% 18%,rgba(75,190,255,.36),transparent 23%),linear-gradient(160deg,transparent 32%,rgba(80,200,255,.15) 49%,transparent 65%)}
+      .aveilot-photo-d5:before{background:radial-gradient(circle at 20% 82%,rgba(75,190,255,.34),transparent 24%),linear-gradient(100deg,transparent 40%,rgba(80,200,255,.14) 52%,transparent 63%)}
       .aveilot-real-badge{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(3,17,45,.86);color:#fff;border:1px solid rgba(100,210,255,.55);border-radius:9px;padding:7px 10px;font:900 11px/1 Arial,sans-serif;letter-spacing:.35px;box-shadow:0 0 16px rgba(60,190,255,.20);pointer-events:none}
       @keyframes aveilotLightSweep{0%,100%{opacity:.20;transform:translateX(-24%) rotate(-3deg)}50%{opacity:.48;transform:translateX(24%) rotate(3deg)}}
       @media(prefers-reduced-motion:reduce){.aveilot-photo-stage:before{animation:none}}
