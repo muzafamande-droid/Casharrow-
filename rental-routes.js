@@ -87,6 +87,7 @@ async function ensurePgSchema() {
       return_amount NUMERIC(18,2),
       active BOOLEAN NOT NULL DEFAULT FALSE,
       featured BOOLEAN NOT NULL DEFAULT FALSE,
+      inventory_total INTEGER NOT NULL DEFAULT 5,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS rentals (
@@ -103,7 +104,9 @@ async function ensurePgSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
-
+  await db.query("ALTER TABLE products ADD COLUMN IF NOT EXISTS inventory_total INTEGER NOT NULL DEFAULT 5");
+  await db.query("ALTER TABLE products DROP CONSTRAINT IF EXISTS products_inventory_total_check");
+  await db.query("ALTER TABLE products ADD CONSTRAINT products_inventory_total_check CHECK (inventory_total >= 0)");
   await db.query("ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS rental_id BIGINT REFERENCES rentals(id)");
   await db.query("ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS level INTEGER");
   await db.query("ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(12,10)");
@@ -122,8 +125,8 @@ async function ensurePgSchema() {
       const term = terms[i];
       const imageUrl = SERIES_ASSETS[series];
       await db.query(`
-        INSERT INTO products (id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured)
-        VALUES (nextval('casharrow_products_id_seq'), $1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9)
+        INSERT INTO products (id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured, inventory_total)
+        VALUES (nextval('casharrow_products_id_seq'), $1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9, 5)
         ON CONFLICT (code) DO UPDATE SET
           series = EXCLUDED.series,
           name = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN EXCLUDED.name ELSE products.name END,
@@ -134,128 +137,74 @@ async function ensurePgSchema() {
           return_amount = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN EXCLUDED.return_amount ELSE products.return_amount END,
           active = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN TRUE ELSE products.active END,
           featured = CASE WHEN products.name LIKE 'CashArrow Generator %' THEN EXCLUDED.featured ELSE products.featured END
-      `, [
-        series,
-        code,
-        `AVEILOT PowerGen Machine ${code}`,
-        `${series} Series PowerGen rental machine ${code}. ${term.days}-day rental term.`,
-        imageUrl,
-        term.fee,
-        term.days,
-        term.returnAmount,
-        i === 0
-      ]);
+      `, [series, code, `AVEILOT PowerGen Machine ${code}`, `${series} Series PowerGen rental machine ${code}. ${term.days}-day rental term.`, imageUrl, term.fee, term.days, term.returnAmount, i === 0]);
     }
   }
 
   const maxProduct = await db.query("SELECT MAX(id) AS max_id FROM products");
-  if (maxProduct.rows[0].max_id !== null) {
-    await db.query("SELECT setval('casharrow_products_id_seq', $1, true)", [Number(maxProduct.rows[0].max_id)]);
-  }
+  if (maxProduct.rows[0].max_id !== null) await db.query("SELECT setval('casharrow_products_id_seq', $1, true)", [Number(maxProduct.rows[0].max_id)]);
   const maxRental = await db.query("SELECT MAX(id) AS max_id FROM rentals");
-  if (maxRental.rows[0].max_id !== null) {
-    await db.query("SELECT setval('casharrow_rentals_id_seq', $1, true)", [Number(maxRental.rows[0].max_id)]);
-  }
+  if (maxRental.rows[0].max_id !== null) await db.query("SELECT setval('casharrow_rentals_id_seq', $1, true)", [Number(maxRental.rows[0].max_id)]);
+}
+
+async function getStock(client, productId, lock = false) {
+  const productResult = await client.query(`SELECT p.*, COUNT(r.id)::int AS sold_count, GREATEST(p.inventory_total - COUNT(r.id)::int, 0)::int AS available_count FROM products p LEFT JOIN rentals r ON r.product_id = p.id WHERE p.id = $1 GROUP BY p.id ${lock ? "FOR UPDATE OF p" : ""}`, [productId]);
+  return productResult.rows[0] || null;
 }
 
 async function createRental({ userId, productId }) {
   return db.transaction(async client => {
-    const productResult = await client.query("SELECT * FROM products WHERE id = $1 FOR SHARE", [productId]);
-    if (!productResult.rowCount) return { status: 404, message: "Product not found" };
-    const product = productResult.rows[0];
+    const product = await getStock(client, productId, true);
+    if (!product) return { status: 404, message: "Product not found" };
     if (!product.active) return { status: 409, message: "This product is not available for rental yet" };
-    if (Number(product.rental_fee) <= 0 || Number(product.rental_days) <= 0 || product.return_amount === null) {
-      return { status: 409, message: "Rental terms are not configured yet" };
-    }
+    if (Number(product.available_count) <= 0) return { status: 409, message: "This machine is sold out. Please wait for the next AVEILOT machine release." };
+    if (Number(product.rental_fee) <= 0 || Number(product.rental_days) <= 0 || product.return_amount === null) return { status: 409, message: "Rental terms are not configured yet" };
 
     const userResult = await client.query("SELECT id, balance, wallet, reserved_balance, referred_by FROM users WHERE id = $1 FOR UPDATE", [userId]);
     if (!userResult.rowCount) return { status: 404, message: "User not found" };
     const user = userResult.rows[0];
     const fee = Number(product.rental_fee);
-    const balance = Number(user.balance);
-    const wallet = Number(user.wallet);
-    if (balance < fee || wallet < fee) return { status: 400, message: "Insufficient balance" };
+    if (Number(user.balance) < fee || Number(user.wallet) < fee) return { status: 400, message: "Insufficient balance" };
 
     const priorWelcomeBonus = await client.query("SELECT id FROM transactions WHERE user_id = $1 AND type = 'Personal Welcome Bonus' LIMIT 1", [userId]);
-    const welcomeBonusAlreadyPaid = priorWelcomeBonus.rowCount > 0;
-    const welcomeBonus = !welcomeBonusAlreadyPaid ? personalWelcomeBonus(fee) : 0;
-
+    const welcomeBonus = priorWelcomeBonus.rowCount === 0 ? personalWelcomeBonus(fee) : 0;
     const start = new Date();
     const end = new Date(start.getTime() + Number(product.rental_days) * 86400000);
-    const rental = await client.query(`
-      INSERT INTO rentals (id, user_id, product_id, rental_fee, rental_days, start_at, end_at, status, return_amount)
-      VALUES (nextval('casharrow_rentals_id_seq'), $1, $2, $3, $4, $5, $6, 'active', $7)
-      RETURNING id, end_at
-    `, [userId, product.id, fee, product.rental_days, start.toISOString(), end.toISOString(), product.return_amount]);
-
+    const rental = await client.query(`INSERT INTO rentals (id, user_id, product_id, rental_fee, rental_days, start_at, end_at, status, return_amount) VALUES (nextval('casharrow_rentals_id_seq'), $1, $2, $3, $4, $5, $6, 'active', $7) RETURNING id, end_at`, [userId, product.id, fee, product.rental_days, start.toISOString(), end.toISOString(), product.return_amount]);
     const rentalId = Number(rental.rows[0].id);
 
-    await client.query(`UPDATE users SET balance = balance - $1, wallet = wallet - $1 WHERE id = $2`, [fee, userId]);
-    await client.query(`
-      INSERT INTO transactions (id, user_id, type, amount, reference, date)
-      VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Rental Fee', $2, $3, NOW())
-    `, [userId, -fee, `rental:${rentalId}`]);
+    await client.query("UPDATE users SET balance = balance - $1, wallet = wallet - $1 WHERE id = $2", [fee, userId]);
+    await client.query("INSERT INTO transactions (id, user_id, type, amount, reference, date) VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Rental Fee', $2, $3, NOW())", [userId, -fee, `rental:${rentalId}`]);
 
     if (welcomeBonus > 0) {
-      await client.query(`
-        UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2
-      `, [welcomeBonus, userId]);
-      await client.query(`
-        INSERT INTO transactions (id, user_id, type, amount, reference, date)
-        VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Personal Welcome Bonus', $2, $3, NOW())
-      `, [userId, welcomeBonus, `welcome-bonus:rental:${rentalId}`]);
-      await client.query(`
-        INSERT INTO rewards (id, user_id, title, amount, claimed)
-        VALUES (nextval('casharrow_rewards_id_seq'), $1, 'Personal Welcome Bonus', $2, 1)
-      `, [userId, welcomeBonus]);
+      await client.query("UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2", [welcomeBonus, userId]);
+      await client.query("INSERT INTO transactions (id, user_id, type, amount, reference, date) VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Personal Welcome Bonus', $2, $3, NOW())", [userId, welcomeBonus, `welcome-bonus:rental:${rentalId}`]);
+      await client.query("INSERT INTO rewards (id, user_id, title, amount, claimed) VALUES (nextval('casharrow_rewards_id_seq'), $1, 'Personal Welcome Bonus', $2, 1)", [userId, welcomeBonus]);
     }
 
     const referralCommissions = [];
     const seenUsers = new Set([Number(userId)]);
     let ancestorId = user.referred_by ? Number(user.referred_by) : null;
-
     for (let level = 1; level <= REFERRAL_RATES.length && ancestorId; level += 1) {
       if (!Number.isInteger(ancestorId) || seenUsers.has(ancestorId)) break;
       seenUsers.add(ancestorId);
-
       const ancestorResult = await client.query("SELECT id, name, referred_by FROM users WHERE id = $1 FOR UPDATE", [ancestorId]);
       if (!ancestorResult.rowCount) break;
       const ancestor = ancestorResult.rows[0];
       const commission = referralCommission(fee, level);
       const rate = REFERRAL_RATES[level - 1];
-
-      const reward = await client.query(`
-        INSERT INTO referral_rewards (id, referrer_id, referred_user_id, amount, rental_id, level, commission_rate)
-        VALUES (nextval('casharrow_referral_rewards_id_seq'), $1, $2, $3, $4, $5, $6)
-        ON CONFLICT (rental_id, referrer_id, level) DO NOTHING
-        RETURNING id
-      `, [ancestor.id, userId, commission, rentalId, level, rate]);
-
+      const reward = await client.query("INSERT INTO referral_rewards (id, referrer_id, referred_user_id, amount, rental_id, level, commission_rate) VALUES (nextval('casharrow_referral_rewards_id_seq'), $1, $2, $3, $4, $5, $6) ON CONFLICT (rental_id, referrer_id, level) DO NOTHING RETURNING id", [ancestor.id, userId, commission, rentalId, level, rate]);
       if (reward.rowCount) {
         await client.query("UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2", [commission, ancestor.id]);
-        await client.query(`
-          INSERT INTO transactions (id, user_id, type, amount, reference, date)
-          VALUES (nextval('casharrow_transactions_id_seq'), $1, $2, $3, $4, NOW())
-        `, [ancestor.id, `Referral Commission L${level}`, commission, `referral-rental:${rentalId}:L${level}`]);
-        await client.query(`
-          INSERT INTO team (id, user_id, member_name, earn)
-          VALUES (nextval('casharrow_team_id_seq'), $1, $2, $3)
-        `, [ancestor.id, ancestor.name, commission]);
+        await client.query("INSERT INTO transactions (id, user_id, type, amount, reference, date) VALUES (nextval('casharrow_transactions_id_seq'), $1, $2, $3, $4, NOW())", [ancestor.id, `Referral Commission L${level}`, commission, `referral-rental:${rentalId}:L${level}`]);
+        await client.query("INSERT INTO team (id, user_id, member_name, earn) VALUES (nextval('casharrow_team_id_seq'), $1, $2, $3)", [ancestor.id, ancestor.name, commission]);
         referralCommissions.push({ level, amount: commission });
       }
-
       ancestorId = ancestor.referred_by ? Number(ancestor.referred_by) : null;
     }
 
     const referralCommissionTotal = referralCommissions.reduce((sum, item) => sum + item.amount, 0);
-    return {
-      ok: true,
-      rentalId,
-      endAt: rental.rows[0].end_at,
-      referralCommission: Math.round(referralCommissionTotal * 100) / 100,
-      referralCommissions,
-      welcomeBonus
-    };
+    return { ok: true, rentalId, endAt: rental.rows[0].end_at, referralCommission: Math.round(referralCommissionTotal * 100) / 100, referralCommissions, welcomeBonus, inventoryAvailable: Math.max(Number(product.available_count) - 1, 0) };
   });
 }
 
@@ -268,22 +217,19 @@ async function completeRental({ userId, rentalId }) {
     if (rental.status !== "active") return { status: 409, message: "Rental cannot be completed" };
     if (new Date(rental.end_at).getTime() > Date.now()) return { status: 409, message: "Rental period has not ended yet" };
     if (rental.return_amount === null) return { status: 409, message: "Return terms are not configured" };
-
     const amount = Number(rental.return_amount);
     await client.query("UPDATE rentals SET status = 'completed', completed_at = NOW() WHERE id = $1", [rentalId]);
     await client.query("UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2", [amount, userId]);
-    await client.query(`
-      INSERT INTO transactions (id, user_id, type, amount, reference, date)
-      VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Rental Return', $2, $3, NOW())
-    `, [userId, amount, `rental-return:${rentalId}`]);
-
+    await client.query("INSERT INTO transactions (id, user_id, type, amount, reference, date) VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Rental Return', $2, $3, NOW())", [userId, amount, `rental-return:${rentalId}`]);
     return { ok: true, amount };
   });
 }
 
+const PRODUCT_SELECT = `SELECT p.id, p.series, p.code, p.name, p.description, p.image_url, p.rental_fee, p.rental_days, p.return_amount, p.active, p.featured, p.inventory_total, COUNT(r.id)::int AS sold_count, GREATEST(p.inventory_total - COUNT(r.id)::int, 0)::int AS available_count FROM products p LEFT JOIN rentals r ON r.product_id = p.id`;
+
 router.get("/products", async (req, res) => {
   try {
-    const result = await db.query(`SELECT id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured FROM products ORDER BY series, id`);
+    const result = await db.query(`${PRODUCT_SELECT} GROUP BY p.id ORDER BY p.series, p.id`);
     res.json({ success: true, products: result.rows });
   } catch (error) {
     console.error("Products failed:", error);
@@ -295,7 +241,7 @@ router.get("/products/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, message: "Invalid product ID" });
   try {
-    const result = await db.query(`SELECT id, series, code, name, description, image_url, rental_fee, rental_days, return_amount, active, featured FROM products WHERE id = $1`, [id]);
+    const result = await db.query(`${PRODUCT_SELECT} WHERE p.id = $1 GROUP BY p.id`, [id]);
     if (!result.rowCount) return res.status(404).json({ success: false, message: "Product not found" });
     res.json({ success: true, product: result.rows[0] });
   } catch (error) {
@@ -306,11 +252,7 @@ router.get("/products/:id", async (req, res) => {
 
 router.get("/rentals", authenticate, async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT r.id, r.product_id, p.code, p.name, r.rental_fee, r.rental_days, r.start_at, r.end_at, r.status, r.return_amount, r.completed_at, r.created_at
-      FROM rentals r JOIN products p ON p.id = r.product_id
-      WHERE r.user_id = $1 ORDER BY r.id DESC
-    `, [req.rentalUser.id]);
+    const result = await db.query("SELECT r.id, r.product_id, p.code, p.name, r.rental_fee, r.rental_days, r.start_at, r.end_at, r.status, r.return_amount, r.completed_at, r.created_at FROM rentals r JOIN products p ON p.id = r.product_id WHERE r.user_id = $1 ORDER BY r.id DESC", [req.rentalUser.id]);
     res.json({ success: true, rentals: result.rows });
   } catch (error) {
     console.error("Rentals failed:", error);
@@ -324,15 +266,7 @@ router.post("/rentals", authenticate, async (req, res) => {
   try {
     const result = await createRental({ userId: req.rentalUser.id, productId });
     if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
-    res.status(201).json({
-      success: true,
-      message: "Rental created successfully",
-      rentalId: result.rentalId,
-      endAt: result.endAt,
-      referralCommission: result.referralCommission,
-      referralCommissions: result.referralCommissions,
-      welcomeBonus: result.welcomeBonus
-    });
+    res.status(201).json({ success: true, message: "Rental created successfully", rentalId: result.rentalId, endAt: result.endAt, referralCommission: result.referralCommission, referralCommissions: result.referralCommissions, welcomeBonus: result.welcomeBonus, inventoryAvailable: result.inventoryAvailable });
   } catch (error) {
     console.error("Rental creation failed:", error);
     res.status(500).json({ success: false, message: "Unable to create rental" });
