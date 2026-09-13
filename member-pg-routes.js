@@ -38,13 +38,32 @@ router.post("/tasks/:id/claim", authenticateToken, async (req, res) => {
   try {
     const result = await db.transaction(async client => {
       const task = await client.query(
-        "SELECT id, reward, done FROM tasks WHERE id = $1 AND user_id = $2 FOR UPDATE",
+        "SELECT id, title, reward, done FROM tasks WHERE id = $1 AND user_id = $2 FOR UPDATE",
         [taskId, req.user.id]
       );
       if (!task.rowCount) return { error: "Task not found", status: 404 };
-      if (Number(task.rows[0].done) === 1) return { error: "Task already claimed", status: 409 };
-      const amount = Number(task.rows[0].reward || 0);
+      const row = task.rows[0];
+      if (Number(row.done) === 1) return { error: "Task already claimed", status: 409 };
+      const title = String(row.title || "").trim().toLowerCase();
+      const amount = Number(row.reward || 0);
       if (amount < 0) return { error: "Invalid task reward", status: 409 };
+
+      // Only Daily check-in is self-completing. Other tasks require proof that
+      // the required action actually happened before any wallet credit.
+      if (title === "invite 3 friends") {
+        const referred = await client.query(
+          "SELECT COUNT(*)::int AS count FROM users WHERE referred_by = $1",
+          [req.user.id]
+        );
+        if (Number(referred.rows[0].count) < 3) {
+          return { error: "Invite 3 friends first. Your reward will unlock after 3 direct referrals join.", status: 409 };
+        }
+      } else if (title === "share app") {
+        return { error: "This task cannot be rewarded until the share action can be verified.", status: 409 };
+      } else if (title !== "daily check-in") {
+        return { error: "This task is locked until its completion can be verified.", status: 409 };
+      }
+
       await client.query("UPDATE tasks SET done = 1 WHERE id = $1 AND user_id = $2", [taskId, req.user.id]);
       if (amount > 0) {
         await client.query("UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2", [amount, req.user.id]);
@@ -84,22 +103,24 @@ router.post("/rewards/:id/claim", authenticateToken, async (req, res) => {
   try {
     const result = await db.transaction(async client => {
       const reward = await client.query(
-        "SELECT id, amount, claimed FROM rewards WHERE id = $1 AND user_id = $2 FOR UPDATE",
+        "SELECT id, title, amount, claimed FROM rewards WHERE id = $1 AND user_id = $2 FOR UPDATE",
         [rewardId, req.user.id]
       );
       if (!reward.rowCount) return { error: "Reward not found", status: 404 };
-      if (Number(reward.rows[0].claimed) === 1) return { error: "Reward already claimed", status: 409 };
-      const amount = Number(reward.rows[0].amount || 0);
+      const row = reward.rows[0];
+      if (Number(row.claimed) === 1) return { error: "Reward already claimed", status: 409 };
+      const amount = Number(row.amount || 0);
       if (amount < 0) return { error: "Invalid reward amount", status: 409 };
-      await client.query("UPDATE rewards SET claimed = 1 WHERE id = $1 AND user_id = $2", [rewardId, req.user.id]);
+
+      // A reward must be explicitly unlocked by server-side business logic.
+      // Legacy positive rewards without an eligibility record are never
+      // allowed to become wallet credit merely because the button was pressed.
       if (amount > 0) {
-        await client.query("UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2", [amount, req.user.id]);
-        await client.query(
-          "INSERT INTO transactions (id, user_id, type, amount, reference) VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Reward', $2, $3)",
-          [req.user.id, amount, `REWARD-${rewardId}`]
-        );
+        return { error: "This reward is not unlocked yet.", status: 409 };
       }
-      return { success: true, amount };
+
+      await client.query("UPDATE rewards SET claimed = 1 WHERE id = $1 AND user_id = $2", [rewardId, req.user.id]);
+      return { success: true, amount: 0 };
     });
     if (result.error) return res.status(result.status).json({ success: false, message: result.error });
     res.json({ success: true, message: "Reward claimed", amount: result.amount });
