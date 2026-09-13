@@ -19,6 +19,20 @@
       .ca-product{position:relative}
       .ca-product h3,.ca-product p{font-family:Arial,sans-serif}
       .ca-product h3:after{content:'  •  AVEILOT';font-size:.55em;color:#0757e8;letter-spacing:.4px;vertical-align:middle}
+      /* Visibility fix only: make the existing machine pricing/details unmistakably readable. */
+      .ca-product .price,.ca-product .amount,.ca-product .rental-fee,.ca-product .rentalFee,
+      .ca-product .product-price,.ca-product .product-amount,.ca-product .machine-price,
+      .ca-product .machine-details,.ca-product .details,.ca-product .meta,
+      .ca-product [class*="price"],[class*="rental-fee"],[class*="rentalFee"],
+      [class*="product-price"],[class*="product-amount"],[class*="machine-price"]{
+        color:#000 !important;
+        -webkit-text-fill-color:#000 !important;
+        opacity:1 !important;
+        text-shadow:none !important;
+        visibility:visible !important;
+      }
+      .ca-product strong,.ca-product b{color:#000 !important;-webkit-text-fill-color:#000 !important;opacity:1 !important}
+      .ca-product small,.ca-product label{color:#111 !important;-webkit-text-fill-color:#111 !important;opacity:1 !important}
       .ca-rental-head h2:before{content:'🏭 ';}
       .aveilot-rental-dialog{position:fixed;inset:0;z-index:12000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(3,15,35,.72)}
       .aveilot-rental-card{width:min(430px,100%);background:#fff;border-radius:24px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.25);font-family:Arial,sans-serif}
@@ -26,10 +40,10 @@
       .aveilot-rental-sub{margin:0 0 16px;color:#667085;font-size:13px;line-height:1.45}
       .aveilot-rental-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0 16px}
       .aveilot-rental-stat{background:#f7f9fd;border:1px solid #e2e9f3;border-radius:13px;padding:11px}
-      .aveilot-rental-stat span{display:block;color:#718096;font-size:11px;font-weight:700;margin-bottom:4px}
-      .aveilot-rental-stat strong{display:block;color:#172033;font-size:15px}
+      .aveilot-rental-stat span{display:block;color:#111 !important;-webkit-text-fill-color:#111 !important;font-size:11px;font-weight:800;margin-bottom:4px;opacity:1 !important}
+      .aveilot-rental-stat strong{display:block;color:#000 !important;-webkit-text-fill-color:#000 !important;font-size:15px;font-weight:900;opacity:1 !important}
       .aveilot-rental-stat.income{background:#edf8f1;border-color:#cdebd7}
-      .aveilot-rental-stat.income strong{color:#147a3d}
+      .aveilot-rental-stat.income strong{color:#147a3d !important;-webkit-text-fill-color:#147a3d !important}
       .aveilot-rental-warning{padding:12px;border-radius:13px;background:#fff4e8;border:1px solid #f3d3a5;color:#80551b;font-size:13px;line-height:1.45;margin-bottom:14px}
       .aveilot-rental-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
       .aveilot-rental-actions button{border:0;border-radius:13px;padding:13px;font-weight:900;min-height:48px;cursor:pointer}
@@ -152,7 +166,6 @@
     const name = esc(product.name || 'AVEILOT PowerGen Machine');
     const code = String(product.name || '').match(/\b([ABCD][1-5])\b/i)?.[1]?.toUpperCase() || product.name || 'AVEILOT Machine';
 
-    // Check the live wallet before asking the member to confirm a purchase.
     const walletResponse = await fetch('/api/wallet', {headers:{Authorization:`Bearer ${token}`},cache:'no-store'});
     const walletData = await walletResponse.json().catch(()=>({}));
     if (!walletResponse.ok) throw new Error(walletData.message || 'Unable to check your wallet balance.');
