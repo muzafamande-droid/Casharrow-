@@ -14,6 +14,7 @@ async function start() {
   await db.init();
   await ensureSupportSchema();
   await rental.ready();
+  await db.query("CREATE INDEX IF NOT EXISTS idx_rentals_product_id ON rentals(product_id)");
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`AVEILOT production server listening on port ${PORT}`);
   });
