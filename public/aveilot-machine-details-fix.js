@@ -67,17 +67,15 @@
     const card=target.closest?.('.rental-product-card,[data-rent-product]');
     if(!card)return;
 
-    // Take control immediately. The old catalog and rental layers both listen
-    // during capture; waiting for fetch() before stopping propagation allowed
-    // them to race each other and could make taps appear to do nothing.
     e.preventDefault();
     e.stopImmediatePropagation();
 
     try {
       const list = await getProducts();
-      const id=card.dataset.rentProduct||card.dataset.machineId;
+      const button = target.closest?.('[data-rent-product]');
+      const id = card.dataset.rentProduct || card.dataset.machineId || button?.dataset.rentProduct || card.querySelector?.('[data-rent-product]')?.dataset.rentProduct;
       const p=list.find(item=>String(item.id)===String(id));
-      if(!p) throw new Error('This machine is no longer available.');
+      if(!p) throw new Error('Unable to identify this machine. Please refresh and try again.');
       open(p);
     } catch (error) {
       const message = error?.name === 'AbortError' ? 'Machine details took too long to load. Please try again.' : (error?.message || 'Unable to open this machine.');
