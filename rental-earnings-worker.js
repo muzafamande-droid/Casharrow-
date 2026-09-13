@@ -23,6 +23,12 @@ function addDays(dateText, amount) {
   return date.toISOString().slice(0, 10);
 }
 
+function isWeekday(dateText) {
+  const [year, month, day] = dateText.split('-').map(Number);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return weekday !== 0 && weekday !== 6;
+}
+
 async function ensureRentalEarningsSchema() {
   if (schemaReady) return;
   await db.query(`
@@ -62,25 +68,27 @@ async function accrueRental(client, rentalId, now = new Date()) {
 
   const firstDate = addDays(localDate(rental.start_at), 1);
   const today = localDate(now);
-  const endDate = localDate(rental.end_at);
-  const lastDueDate = today < endDate ? today : endDate;
-  if (lastDueDate < firstDate) return { processed: 0, completed: false };
+  if (today < firstDate) return { processed: 0, completed: false };
 
   const existing = await client.query(
     'SELECT earning_date FROM rental_earnings WHERE rental_id = $1 ORDER BY earning_date ASC',
     [rental.id]
   );
   const existingDates = new Set(existing.rows.map(row => String(row.earning_date).slice(0, 10)));
+  let earnedDays = existingDates.size;
   const baseDaily = Math.round((totalReturn / days) * 100) / 100;
   let processed = 0;
 
-  for (let offset = 0; offset < days; offset += 1) {
+  // Rental terms are measured in earning days. Saturday and Sunday never consume a day.
+  // We deliberately do not use rental.end_at as a hard stop, so weekends extend the schedule.
+  for (let offset = 0; earnedDays < days; offset += 1) {
     const earningDate = addDays(firstDate, offset);
-    if (earningDate > lastDueDate) break;
+    if (earningDate > today) break;
+    if (!isWeekday(earningDate)) continue;
     if (existingDates.has(earningDate)) continue;
 
     let amount = baseDaily;
-    if (offset === days - 1) {
+    if (earnedDays === days - 1) {
       const currentTotal = (await client.query(
         'SELECT COALESCE(SUM(amount), 0) AS total FROM rental_earnings WHERE rental_id = $1',
         [rental.id]
@@ -108,6 +116,7 @@ async function accrueRental(client, rentalId, now = new Date()) {
     `, [rental.user_id, amount, `rental-daily:${rental.id}:${earningDate}`]);
 
     existingDates.add(earningDate);
+    earnedDays += 1;
     processed += 1;
   }
 
@@ -116,8 +125,8 @@ async function accrueRental(client, rentalId, now = new Date()) {
     [rental.id]
   );
   const generated = Number(earnedResult.rows[0].total || 0);
-  const earnedDays = Number(earnedResult.rows[0].days || 0);
-  const shouldComplete = new Date(rental.end_at).getTime() <= now.getTime() || earnedDays >= days;
+  earnedDays = Number(earnedResult.rows[0].days || 0);
+  const shouldComplete = earnedDays >= days;
 
   if (shouldComplete) {
     await client.query(
