@@ -46,7 +46,7 @@
         const daily = Number(rental.daily_amount || 0);
         const generated = Number(rental.generated_total || 0);
         const remaining = Number(rental.days_remaining || 0);
-        panel.innerHTML = `<strong style="display:block;margin-bottom:5px;color:#07162f">Daily machine income</strong><div>Daily amount: <b>${money(daily)}</b></div><div>Total generated: <b>${money(generated)}</b></div><div>Days earned: <b>${Number(rental.days_earned || 0)}</b></div><div>Days remaining: <b>${remaining}</b></div><div style="margin-top:5px;color:#718096">Income is credited automatically each day. No manual completion is required.</div>`;
+        panel.innerHTML = `<strong style="display:block;margin-bottom:5px;color:#07162f">Daily machine income</strong><div>Daily amount: <b>${money(daily)}</b></div><div>Total generated: <b>${money(generated)}</b></div><div>Weekdays earned: <b>${Number(rental.days_earned || 0)}</b></div><div>Weekdays remaining: <b>${remaining}</b></div><div style="margin-top:5px;color:#718096">Income is credited Monday–Friday. Saturdays and Sundays do not consume rental earning days.</div>`;
       });
     } catch (error) {
       console.warn('AVEILOT rental earnings UI:', error);
