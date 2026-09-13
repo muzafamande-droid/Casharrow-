@@ -1,6 +1,7 @@
 (() => {
   if (window.__aveilotMachineDetailsFix) return;
   window.__aveilotMachineDetailsFix = true;
+
   const money = v => `UGX ${Number(v || 0).toLocaleString()}`;
   const token = () => localStorage.getItem('casharrowToken') || '';
   let products = [];
@@ -10,11 +11,18 @@
   document.head.appendChild(css);
 
   async function getProducts() {
+    if (products.length) return products;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const r = await fetch('/api/products', {cache:'no-store'});
-      const d = await r.json();
+      const r = await fetch('/api/products', {cache:'no-store', signal:controller.signal});
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.message || d.error || `Unable to load machine details (${r.status})`);
       products = Array.isArray(d) ? d : (d.products || []);
-    } catch (_) {}
+      return products;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   function values(p){
@@ -50,26 +58,32 @@
         if(!r.ok)throw new Error(d.message||d.error||`Rental request failed (${r.status})`);
         alert(`Machine rented successfully.\n\nDaily income: ${money(v.daily)}\nTotal return: ${money(v.total)}`);
         close();location.reload();
-      }catch(e){b.disabled=false;b.textContent='Rent Machine';err.hidden=false;err.textContent=e.message==='Failed to fetch'?'The rental server could not be reached. Please refresh and try again.':e.message;}
+      }catch(e){b.disabled=false;b.textContent='Rent Machine';err.hidden=false;err.textContent=e?.name==='TypeError'?'The rental server could not be reached. Please refresh and try again.':e.message;}
     };
-  }
-
-  function productFrom(target){
-    const card=target.closest('[data-rent-product], [data-machine-id], .rental-product-card');
-    if(!card)return null;
-    const id=card.dataset.rentProduct||card.dataset.machineId;
-    return products.find(p=>String(p.id)===String(id));
   }
 
   document.addEventListener('click', async e=>{
     const target=e.target;
-    if(!target.closest('.rental-product-card,[data-rent-product]'))return;
-    await getProducts();
-    const p=productFrom(target);
-    if(!p)return;
-    e.preventDefault();e.stopImmediatePropagation();
-    open(p);
+    const card=target.closest?.('.rental-product-card,[data-rent-product]');
+    if(!card)return;
+
+    // Take control immediately. The old catalog and rental layers both listen
+    // during capture; waiting for fetch() before stopping propagation allowed
+    // them to race each other and could make taps appear to do nothing.
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    try {
+      const list = await getProducts();
+      const id=card.dataset.rentProduct||card.dataset.machineId;
+      const p=list.find(item=>String(item.id)===String(id));
+      if(!p) throw new Error('This machine is no longer available.');
+      open(p);
+    } catch (error) {
+      const message = error?.name === 'AbortError' ? 'Machine details took too long to load. Please try again.' : (error?.message || 'Unable to open this machine.');
+      alert(message);
+    }
   },true);
 
-  getProducts();
+  getProducts().catch(() => {});
 })();
