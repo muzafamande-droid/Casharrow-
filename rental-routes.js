@@ -148,8 +148,14 @@ async function ensurePgSchema() {
 }
 
 async function getStock(client, productId, lock = false) {
-  const productResult = await client.query(`SELECT p.*, COUNT(r.id)::int AS sold_count, GREATEST(p.inventory_total - COUNT(r.id)::int, 0)::int AS available_count FROM products p LEFT JOIN rentals r ON r.product_id = p.id WHERE p.id = $1 GROUP BY p.id ${lock ? "FOR UPDATE OF p" : ""}`, [productId]);
-  return productResult.rows[0] || null;
+  const productResult = await client.query(`SELECT * FROM products WHERE id = $1 ${lock ? "FOR UPDATE" : ""}`, [productId]);
+  if (!productResult.rowCount) return null;
+  const product = productResult.rows[0];
+  const soldResult = await client.query("SELECT COUNT(*)::int AS sold_count FROM rentals WHERE product_id = $1", [productId]);
+  const soldCount = Number(soldResult.rows[0].sold_count || 0);
+  product.sold_count = soldCount;
+  product.available_count = Math.max(Number(product.inventory_total || 0) - soldCount, 0);
+  return product;
 }
 
 async function createRental({ userId, productId }) {
