@@ -6,6 +6,9 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 // AVEILOT referral rule: only the person who directly referred the renter earns 10% of the rental fee.
 const REFERRAL_RATES = [0.10];
+// Buyer purchase appreciation: credited immediately when a machine purchase succeeds.
+// A UGX 30,000 machine therefore gives UGX 2,000 appreciation.
+const PURCHASE_APPRECIATION_RATE = 1 / 15;
 
 function personalWelcomeBonus(fee) {
   if (fee >= 1000000) return 100000;
@@ -19,6 +22,10 @@ function personalWelcomeBonus(fee) {
   if (fee >= 200000) return 15000;
   if (fee >= 100000) return 7000;
   return 0;
+}
+
+function purchaseAppreciation(fee) {
+  return Math.round(fee * PURCHASE_APPRECIATION_RATE);
 }
 
 function referralCommission(fee, level) {
@@ -103,6 +110,14 @@ async function ensurePgSchema() {
       completed_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS purchase_appreciation_rewards (
+      id BIGINT PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      rental_id BIGINT NOT NULL UNIQUE REFERENCES rentals(id) ON DELETE CASCADE,
+      amount NUMERIC(18,2) NOT NULL,
+      rate NUMERIC(12,10) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
   await db.query("ALTER TABLE products ADD COLUMN IF NOT EXISTS inventory_total INTEGER NOT NULL DEFAULT 5");
   await db.query("ALTER TABLE products DROP CONSTRAINT IF EXISTS products_inventory_total_check");
@@ -114,8 +129,10 @@ async function ensurePgSchema() {
   await db.query("DROP INDEX IF EXISTS uq_referral_reward_rental");
   await db.query("CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_reward_rental_referrer_level ON referral_rewards(rental_id, referrer_id, level) WHERE rental_id IS NOT NULL AND level IS NOT NULL");
   await db.query("CREATE INDEX IF NOT EXISTS idx_referral_rewards_rental ON referral_rewards(rental_id)");
+  await db.query("CREATE INDEX IF NOT EXISTS idx_purchase_appreciation_user ON purchase_appreciation_rewards(user_id)");
   await db.query("CREATE SEQUENCE IF NOT EXISTS casharrow_products_id_seq");
   await db.query("CREATE SEQUENCE IF NOT EXISTS casharrow_rentals_id_seq");
+  await db.query("CREATE SEQUENCE IF NOT EXISTS casharrow_purchase_appreciation_rewards_id_seq");
   await db.query("CREATE INDEX IF NOT EXISTS idx_rentals_user ON rentals(user_id)");
   await db.query("CREATE INDEX IF NOT EXISTS idx_rentals_status_end ON rentals(status, end_at)");
 
@@ -145,6 +162,8 @@ async function ensurePgSchema() {
   if (maxProduct.rows[0].max_id !== null) await db.query("SELECT setval('casharrow_products_id_seq', $1, true)", [Number(maxProduct.rows[0].max_id)]);
   const maxRental = await db.query("SELECT MAX(id) AS max_id FROM rentals");
   if (maxRental.rows[0].max_id !== null) await db.query("SELECT setval('casharrow_rentals_id_seq', $1, true)", [Number(maxRental.rows[0].max_id)]);
+  const maxPurchaseAppreciation = await db.query("SELECT MAX(id) AS max_id FROM purchase_appreciation_rewards");
+  if (maxPurchaseAppreciation.rows[0].max_id !== null) await db.query("SELECT setval('casharrow_purchase_appreciation_rewards_id_seq', $1, true)", [Number(maxPurchaseAppreciation.rows[0].max_id)]);
 }
 
 async function getStock(client, productId, lock = false) {
@@ -182,6 +201,16 @@ async function createRental({ userId, productId }) {
     await client.query("UPDATE users SET balance = balance - $1, wallet = wallet - $1 WHERE id = $2", [fee, userId]);
     await client.query("INSERT INTO transactions (id, user_id, type, amount, reference, date) VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Rental Fee', $2, $3, NOW())", [userId, -fee, `rental:${rentalId}`]);
 
+    const buyerAppreciation = purchaseAppreciation(fee);
+    if (buyerAppreciation > 0) {
+      const appreciationReward = await client.query("INSERT INTO purchase_appreciation_rewards (id, user_id, rental_id, amount, rate) VALUES (nextval('casharrow_purchase_appreciation_rewards_id_seq'), $1, $2, $3, $4) ON CONFLICT (rental_id) DO NOTHING RETURNING id", [userId, rentalId, buyerAppreciation, PURCHASE_APPRECIATION_RATE]);
+      if (appreciationReward.rowCount) {
+        await client.query("UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2", [buyerAppreciation, userId]);
+        await client.query("INSERT INTO transactions (id, user_id, type, amount, reference, date) VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Purchase Appreciation', $2, $3, NOW())", [userId, buyerAppreciation, `purchase-appreciation:rental:${rentalId}`]);
+        await client.query("INSERT INTO rewards (id, user_id, title, amount, claimed) VALUES (nextval('casharrow_rewards_id_seq'), $1, 'Machine Purchase Appreciation', $2, 1)", [userId, buyerAppreciation]);
+      }
+    }
+
     if (welcomeBonus > 0) {
       await client.query("UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2", [welcomeBonus, userId]);
       await client.query("INSERT INTO transactions (id, user_id, type, amount, reference, date) VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Personal Welcome Bonus', $2, $3, NOW())", [userId, welcomeBonus, `welcome-bonus:rental:${rentalId}`]);
@@ -210,7 +239,7 @@ async function createRental({ userId, productId }) {
     }
 
     const referralCommissionTotal = referralCommissions.reduce((sum, item) => sum + item.amount, 0);
-    return { ok: true, rentalId, endAt: rental.rows[0].end_at, referralCommission: Math.round(referralCommissionTotal * 100) / 100, referralCommissions, welcomeBonus, inventoryAvailable: Math.max(Number(product.available_count) - 1, 0) };
+    return { ok: true, rentalId, endAt: rental.rows[0].end_at, buyerAppreciation, referralCommission: Math.round(referralCommissionTotal * 100) / 100, referralCommissions, welcomeBonus, inventoryAvailable: Math.max(Number(product.available_count) - 1, 0) };
   });
 }
 
@@ -272,7 +301,7 @@ router.post("/rentals", authenticate, async (req, res) => {
   try {
     const result = await createRental({ userId: req.rentalUser.id, productId });
     if (!result.ok) return res.status(result.status).json({ success: false, message: result.message });
-    res.status(201).json({ success: true, message: "Rental created successfully", rentalId: result.rentalId, endAt: result.endAt, referralCommission: result.referralCommission, referralCommissions: result.referralCommissions, welcomeBonus: result.welcomeBonus, inventoryAvailable: result.inventoryAvailable });
+    res.status(201).json({ success: true, message: "Rental created successfully", rentalId: result.rentalId, endAt: result.endAt, buyerAppreciation: result.buyerAppreciation, referralCommission: result.referralCommission, referralCommissions: result.referralCommissions, welcomeBonus: result.welcomeBonus, inventoryAvailable: result.inventoryAvailable });
   } catch (error) {
     console.error("Rental creation failed:", error);
     res.status(500).json({ success: false, message: "Unable to create rental" });
@@ -292,4 +321,4 @@ router.post("/rentals/:id/complete", authenticate, async (req, res) => {
   }
 });
 
-module.exports = { router, ready: ensurePgSchema, REFERRAL_RATES, referralCommission };
+module.exports = { router, ready: ensurePgSchema, REFERRAL_RATES, referralCommission, purchaseAppreciation, PURCHASE_APPRECIATION_RATE };
