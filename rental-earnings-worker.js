@@ -23,12 +23,6 @@ function addDays(dateText, amount) {
   return date.toISOString().slice(0, 10);
 }
 
-function isWeekday(dateText) {
-  const [year, month, day] = dateText.split('-').map(Number);
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  return weekday !== 0 && weekday !== 6;
-}
-
 async function ensureRentalEarningsSchema() {
   if (schemaReady) return;
   await db.query(`
@@ -43,6 +37,10 @@ async function ensureRentalEarningsSchema() {
     );
   `);
   await db.query('CREATE SEQUENCE IF NOT EXISTS casharrow_rental_earnings_id_seq');
+  const maxResult = await db.query('SELECT MAX(id) AS max_id FROM rental_earnings');
+  if (maxResult.rows[0].max_id !== null) {
+    await db.query("SELECT setval('casharrow_rental_earnings_id_seq', $1, true)", [Number(maxResult.rows[0].max_id)]);
+  }
   await db.query('CREATE INDEX IF NOT EXISTS idx_rental_earnings_user ON rental_earnings(user_id, earning_date DESC)');
   await db.query('CREATE INDEX IF NOT EXISTS idx_rental_earnings_rental ON rental_earnings(rental_id, earning_date)');
   schemaReady = true;
@@ -66,9 +64,12 @@ async function accrueRental(client, rentalId, now = new Date()) {
     throw new Error(`Invalid earning terms for rental ${rental.id}`);
   }
 
+  // Earnings are recorded for the rental period only. They are ledger entries,
+  // not wallet credits. The rental cannot complete before end_at.
   const firstDate = addDays(localDate(rental.start_at), 1);
   const today = localDate(now);
-  if (today < firstDate) return { processed: 0, completed: false };
+  const periodEnded = new Date(now).getTime() >= new Date(rental.end_at).getTime();
+  if (today < firstDate && !periodEnded) return { processed: 0, completed: false };
 
   const existing = await client.query(
     'SELECT earning_date FROM rental_earnings WHERE rental_id = $1 ORDER BY earning_date ASC',
@@ -79,12 +80,11 @@ async function accrueRental(client, rentalId, now = new Date()) {
   const baseDaily = Math.round((totalReturn / days) * 100) / 100;
   let processed = 0;
 
-  // Rental terms are measured in earning days. Saturday and Sunday never consume a day.
-  // We deliberately do not use rental.end_at as a hard stop, so weekends extend the schedule.
+  // Backfill any missed calendar days. Every rental day counts; weekends do not
+  // pause or extend the rental timeframe.
   for (let offset = 0; earnedDays < days; offset += 1) {
     const earningDate = addDays(firstDate, offset);
-    if (earningDate > today) break;
-    if (!isWeekday(earningDate)) continue;
+    if (earningDate > today && !periodEnded) break;
     if (existingDates.has(earningDate)) continue;
 
     let amount = baseDaily;
@@ -106,15 +106,8 @@ async function accrueRental(client, rentalId, now = new Date()) {
     `, [rental.id, rental.user_id, earningDate, amount]);
     if (!inserted.rowCount) continue;
 
-    await client.query(
-      'UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2',
-      [amount, rental.user_id]
-    );
-    await client.query(`
-      INSERT INTO transactions (id, user_id, type, amount, reference, date)
-      VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Rental Daily Income', $2, $3, NOW())
-    `, [rental.user_id, amount, `rental-daily:${rental.id}:${earningDate}`]);
-
+    // IMPORTANT: do not credit balance/wallet here. Rental earnings remain locked
+    // until the rental timeframe has actually ended.
     existingDates.add(earningDate);
     earnedDays += 1;
     processed += 1;
@@ -126,16 +119,31 @@ async function accrueRental(client, rentalId, now = new Date()) {
   );
   const generated = Number(earnedResult.rows[0].total || 0);
   earnedDays = Number(earnedResult.rows[0].days || 0);
-  const shouldComplete = earnedDays >= days;
 
-  if (shouldComplete) {
-    await client.query(
-      "UPDATE rentals SET status = 'completed', completed_at = COALESCE(completed_at, NOW()) WHERE id = $1 AND status = 'active'",
+  // The machine locks only after its actual end_at. At that point the complete
+  // configured return becomes available once, regardless of worker timing.
+  if (periodEnded && earnedDays >= days) {
+    const completed = await client.query(
+      "UPDATE rentals SET status = 'completed', completed_at = COALESCE(completed_at, NOW()) WHERE id = $1 AND status = 'active' RETURNING id",
       [rental.id]
     );
+
+    if (completed.rowCount) {
+      const amount = totalReturn;
+      await client.query(
+        'UPDATE users SET balance = balance + $1, wallet = wallet + $1 WHERE id = $2',
+        [amount, rental.user_id]
+      );
+      await client.query(`
+        INSERT INTO transactions (id, user_id, type, amount, reference, date)
+        VALUES (nextval('casharrow_transactions_id_seq'), $1, 'Rental Return', $2, $3, NOW())
+      `, [rental.user_id, amount, `rental-return:${rental.id}`]);
+    }
+
+    return { processed, completed: completed.rowCount > 0, generated, earnedDays };
   }
 
-  return { processed, completed: shouldComplete, generated, earnedDays };
+  return { processed, completed: false, generated, earnedDays };
 }
 
 async function processRentalEarnings() {
