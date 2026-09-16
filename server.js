@@ -4,12 +4,14 @@ const rental = require("./rental-routes");
 const rentalEarningsApi = require("./rental-earnings-api");
 const { startRentalEarningsWorker } = require("./rental-earnings-worker");
 const { startReferralPayoutWorker, ensureReferralPayoutSchema } = require("./referral-payout-worker");
+const referralSummary = require("./referral-summary-routes");
 const { startPaymentProviderWorker } = require("./mobile-money-provider-worker");
 const { ensureSupportSchema } = require("./support-schema");
 
 const PORT = Number(process.env.PORT || 3000);
 
 app.use(rentalEarningsApi);
+app.use("/api", referralSummary.router);
 
 async function start() {
   await db.init();
