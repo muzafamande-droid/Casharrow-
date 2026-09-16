@@ -3,6 +3,7 @@ const db = require("./database-pg");
 const rental = require("./rental-routes");
 const rentalEarningsApi = require("./rental-earnings-api");
 const { startRentalEarningsWorker } = require("./rental-earnings-worker");
+const { startReferralPayoutWorker, ensureReferralPayoutSchema } = require("./referral-payout-worker");
 const { startPaymentProviderWorker } = require("./mobile-money-provider-worker");
 const { ensureSupportSchema } = require("./support-schema");
 
@@ -13,12 +14,14 @@ app.use(rentalEarningsApi);
 async function start() {
   await db.init();
   await ensureSupportSchema();
+  await ensureReferralPayoutSchema();
   await rental.ready();
   await db.query("CREATE INDEX IF NOT EXISTS idx_rentals_product_id ON rentals(product_id)");
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`AVEILOT production server listening on port ${PORT}`);
   });
   startRentalEarningsWorker();
+  startReferralPayoutWorker();
   startPaymentProviderWorker();
 }
 
