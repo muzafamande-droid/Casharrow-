@@ -1,4 +1,5 @@
 const db = require("./database-pg");
+const { releaseDueReferralRewards } = require("./referral-payout-worker");
 
 async function getUser(clientOrPool, userId, forUpdate = false) {
   const result = await clientOrPool.query(
@@ -80,6 +81,11 @@ async function approveDeposit(depositId) {
 async function createWithdrawal({ userId, amount, account }) {
   const value = Number(amount);
   if (!Number.isFinite(value) || value <= 0) throw new Error("Withdrawal amount must be positive");
+
+  // If the free hosting instance slept through the 5th, release due referral
+  // earnings before checking the member's spendable balance.
+  await releaseDueReferralRewards();
+
   return db.transaction(async client => {
     const user = await getUser(client, userId, true);
     if (!user) throw new Error("User not found");
