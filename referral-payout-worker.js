@@ -8,9 +8,17 @@ const WORKER_INTERVAL_MS = Math.max(Number(process.env.REFERRAL_PAYOUT_WORKER_MS
 async function ensureReferralPayoutSchema() {
   await db.query(`
     ALTER TABLE referral_rewards
-      ADD COLUMN IF NOT EXISTS payout_status TEXT NOT NULL DEFAULT 'paid',
+      ADD COLUMN IF NOT EXISTS payout_status TEXT,
       ADD COLUMN IF NOT EXISTS payout_date DATE,
       ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+
+    UPDATE referral_rewards
+       SET payout_status = 'paid'
+     WHERE payout_status IS NULL;
+
+    ALTER TABLE referral_rewards
+      ALTER COLUMN payout_status SET DEFAULT 'pending',
+      ALTER COLUMN payout_status SET NOT NULL;
 
     CREATE INDEX IF NOT EXISTS idx_referral_rewards_payout
       ON referral_rewards(payout_status, payout_date, referrer_id);
