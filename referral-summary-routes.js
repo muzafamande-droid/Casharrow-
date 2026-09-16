@@ -1,5 +1,6 @@
 const express = require("express");
 const db = require("./database-pg");
+const { releaseDueReferralRewards } = require("./referral-payout-worker");
 
 const router = express.Router();
 
@@ -17,6 +18,8 @@ function authenticateToken(req, res, next) {
 
 router.get("/referral-summary", authenticateToken, async (req, res) => {
   try {
+    await releaseDueReferralRewards();
+
     const direct = await db.query(
       `SELECT id, name, phone, created_at
          FROM users
