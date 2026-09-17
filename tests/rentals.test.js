@@ -82,7 +82,7 @@ test("configured rental checkout rejects a user without sufficient balance", asy
   assert.match(data.message, /insufficient balance/i);
 });
 
-test("configured rental deducts wallet balance and manual completion is disabled", async () => {
+test("configured rental applies the existing appreciation and welcome rules without changing rental numbers", async () => {
   const user = (await pgDb.query("SELECT id FROM users WHERE phone = $1", [testPhone])).rows[0];
   assert.ok(user);
   const product = (await pgDb.query("SELECT id FROM products WHERE code = 'A1'")).rows[0];
@@ -100,8 +100,15 @@ test("configured rental deducts wallet balance and manual completion is disabled
   assert.equal(fundedResponse.status, 201);
   assert.equal(fundedData.success, true);
 
-  const updatedUser = (await pgDb.query("SELECT balance FROM users WHERE id = $1", [user.id])).rows[0];
-  assert.equal(Number(updatedUser.balance), 20000);
+  // A1 remains UGX 30,000 for 18 days with a UGX 45,000 return.
+  // The current accounting also credits the configured purchase appreciation
+  // and first-rental personal welcome bonus after charging the rental fee.
+  assert.equal(Number(fundedData.buyerAppreciation), 2000);
+  assert.equal(Number(fundedData.welcomeBonus), 7000);
+
+  const updatedUser = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [user.id])).rows[0];
+  assert.equal(Number(updatedUser.balance), 29000);
+  assert.equal(Number(updatedUser.wallet), 29000);
 
   const rentalRow = (await pgDb.query("SELECT * FROM rentals WHERE id = $1", [fundedData.rentalId])).rows[0];
   assert.equal(rentalRow.status, "active");
@@ -114,7 +121,7 @@ test("configured rental deducts wallet balance and manual completion is disabled
   assert.match((await earlyComplete.json()).message, /manual rental completion is disabled/i);
 });
 
-test("each qualifying rental pays only the direct referrer 10% commission", async () => {
+test("each qualifying rental pays only the direct referrer 10% commission and reserves it until payout", async () => {
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-6);
   const rootPhone = `0711${suffix}`;
   const directPhone = `0722${suffix}`;
@@ -181,23 +188,27 @@ test("each qualifying rental pays only the direct referrer 10% commission", asyn
     );
 
     const rewards = (await pgDb.query(
-      "SELECT referrer_id, referred_user_id, amount, rental_id, level FROM referral_rewards WHERE rental_id = $1 ORDER BY level",
+      "SELECT referrer_id, referred_user_id, amount, rental_id, level, payout_status FROM referral_rewards WHERE rental_id = $1 ORDER BY level",
       [firstData.rentalId]
     )).rows;
     assert.equal(rewards.length, 1);
     assert.deepEqual(rewards.map(row => [Number(row.referrer_id), Number(row.amount), Number(row.level)]), [
       [Number(direct.id), 3000, 1]
     ]);
+    assert.equal(rewards[0].payout_status, "pending");
 
-    const directAfterFirst = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [direct.id])).rows[0];
-    const indirectAfterFirst = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [indirect.id])).rows[0];
-    const rootAfterFirst = (await pgDb.query("SELECT balance, wallet FROM users WHERE id = $1", [root.id])).rows[0];
-    assert.equal(Number(directAfterFirst.balance), 3000);
-    assert.equal(Number(directAfterFirst.wallet), 3000);
+    const directAfterFirst = (await pgDb.query("SELECT balance, wallet, reserved_balance FROM users WHERE id = $1", [direct.id])).rows[0];
+    const indirectAfterFirst = (await pgDb.query("SELECT balance, wallet, reserved_balance FROM users WHERE id = $1", [indirect.id])).rows[0];
+    const rootAfterFirst = (await pgDb.query("SELECT balance, wallet, reserved_balance FROM users WHERE id = $1", [root.id])).rows[0];
+    assert.equal(Number(directAfterFirst.balance), 0);
+    assert.equal(Number(directAfterFirst.wallet), 0);
+    assert.equal(Number(directAfterFirst.reserved_balance), 3000);
     assert.equal(Number(indirectAfterFirst.balance), 0);
     assert.equal(Number(indirectAfterFirst.wallet), 0);
+    assert.equal(Number(indirectAfterFirst.reserved_balance), 0);
     assert.equal(Number(rootAfterFirst.balance), 0);
     assert.equal(Number(rootAfterFirst.wallet), 0);
+    assert.equal(Number(rootAfterFirst.reserved_balance), 0);
   } finally {
     const ids = await pgDb.query("SELECT id FROM users WHERE phone IN ($1, $2, $3, $4)", [rootPhone, directPhone, level2Phone, buyerPhone]);
     const userIds = ids.rows.map(row => row.id);
