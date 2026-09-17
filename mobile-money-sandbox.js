@@ -14,7 +14,7 @@ function normalizeMsisdn(value) {
 function config() {
   return {
     baseUrl: String(process.env.MTN_BASE_URL || SANDBOX_BASE_URL).replace(/\/$/, ""),
-    targetEnvironment: "sandbox",
+    targetEnvironment: String(process.env.MTN_ENVIRONMENT || "sandbox").trim().toLowerCase(),
     currency: String(process.env.MTN_CURRENCY || DEFAULT_CURRENCY).trim().toUpperCase(),
     enabled: process.env.MTN_AUTOMATIC_DEPOSITS_ENABLED === "true",
     subscriptionKey: process.env.MTN_COLLECTION_SUBSCRIPTION_KEY,
@@ -25,7 +25,7 @@ function config() {
 
 function configured() {
   const c = config();
-  return c.enabled && Boolean(c.subscriptionKey && c.apiUser && c.apiKey) && c.baseUrl === SANDBOX_BASE_URL && c.currency === DEFAULT_CURRENCY;
+  return c.targetEnvironment === "sandbox" && c.enabled && Boolean(c.subscriptionKey && c.apiUser && c.apiKey) && c.baseUrl === SANDBOX_BASE_URL && c.currency === DEFAULT_CURRENCY;
 }
 
 function makeReference(depositId) {
