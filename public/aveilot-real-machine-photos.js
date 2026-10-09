@@ -2,33 +2,25 @@
   if (window.__aveilotRealMachinePhotos) return;
   window.__aveilotRealMachinePhotos = true;
 
-  // AVEILOT machine visuals. A1-C5 keep their existing assignments.
-  // D1-D5 keep the same AVEILOT visual family but receive distinct presentation
-  // treatments so their machines read as different sizes/shapes without changing cards.
+  // Restored AVEILOT futuristic power-core visuals from the earlier catalog.
+  // The same sci-fi image family is assigned consistently across A1-D5.
   const FILES = [
-    'https://images.stockcake.com/public/1/e/6/1e616c57-f289-4d10-9ab9-1bb75b6d4a26_large/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/a/7/1a734b73-4db1-42d2-b8b6-a92d8e9341d2_small/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/3/b/7/3b7f88ed-1421-4505-8431-f0f959a371ab_small/futuristic-mechanical-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/2/8/128c7c7a-8e4a-41f8-a249-3b0c4d726169_small/futuristic-power-source-stockcake.jpg',
-    'https://images.stockcake.com/public/8/d/f/8df1d8b9-0a4c-4509-931d-775a403a5f38_small/mechanical-core-illuminated-stockcake.jpg',
-    'https://images.stockcake.com/public/1/e/6/1e616c57-f289-4d10-9ab9-1bb75b6d4a26_large/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/a/7/1a734b73-4db1-42d2-b8b6-a92d8e9341d2_small/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/3/b/7/3b7f88ed-1421-4505-8431-f0f959a371ab_small/futuristic-mechanical-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/2/8/128c7c7a-8e4a-41f8-a249-3b0c4d726169_small/futuristic-power-source-stockcake.jpg',
-    'https://images.stockcake.com/public/8/d/f/8df1d8b9-0a4c-4509-931d-775a403a5f38_small/mechanical-core-illuminated-stockcake.jpg',
-    'https://images.stockcake.com/public/1/e/6/1e616c57-f289-4d10-9ab9-1bb75b6d4a26_large/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/a/7/1a734b73-4db1-42d2-b8b6-a92d8e9341d2_small/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/3/b/7/3b7f88ed-1421-4505-8431-f0f959a371ab_small/futuristic-mechanical-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/2/8/128c7c7a-8e4a-41f8-a249-3b0c4d726169_small/futuristic-power-source-stockcake.jpg',
-    'https://images.stockcake.com/public/8/d/f/8df1d8b9-0a4c-4509-931d-775a403a5f38_small/mechanical-core-illuminated-stockcake.jpg',
-    'https://images.stockcake.com/public/1/e/6/1e616c57-f289-4d10-9ab9-1bb75b6d4a26_large/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/a/7/1a734b73-4db1-42d2-b8b6-a92d8e9341d2_small/futuristic-energy-core-stockcake.jpg',
-    'https://images.stockcake.com/public/3/b/7/3b7f88ed-1421-4505-8431-f0f959a371ab_small/futuristic-mechanical-core-stockcake.jpg',
-    'https://images.stockcake.com/public/1/2/8/128c7c7a-8e4a-41f8-a249-3b0c4d726169_small/futuristic-power-source-stockcake.jpg',
-    'https://images.stockcake.com/public/8/d/f/8df1d8b9-0a4c-4509-931d-775a403a5f38_small/mechanical-core-illuminated-stockcake.jpg'
+    'https://images.pexels.com/photos/18816918/pexels-photo-18816918.jpeg?cs=srgb&dl=pexels-igovar-igovar-3000547-18816918.jpg&fm=jpg',
+    'https://images.pexels.com/photos/35042792/pexels-photo-35042792.jpeg?cs=srgb&dl=pexels-theshuttervision-35042792.jpg&fm=jpg',
+    'https://images.pexels.com/photos/5693845/pexels-photo-5693845.jpeg?cs=srgb&dl=pexels-ezrah-lane-3654374-5693845.jpg&fm=jpg',
+    'https://images.pexels.com/photos/20091612/pexels-photo-20091612.jpeg?cs=srgb&dl=pexels-richard-wilson-779692900-20091612.jpg&fm=jpg',
+    'https://images.stockcake.com/public/c/2/1/c21e252f-6a70-454d-8130-124d2be845d0_large/colossal-turbine-engine-stockcake.jpg',
+    'https://images.stockcake.com/public/c/7/c/c7c13a81-5dc1-4cc3-8e33-012430c7007b_large/dynamic-industrial-turbine-stockcake.jpg',
+    'https://images.stockcake.com/public/e/b/4/eb453184-925f-4963-b8eb-ad9d2bcabee5_large/green-energy-machine-stockcake.jpg',
+    'https://images.stockcake.com/public/2/c/2/2c277ee3-8151-450a-8c5b-6685ab084196_large/industrial-turbine-assembly-stockcake.jpg'
   ];
 
-  const PHOTOS = FILES;
+  const CODE_TO_PHOTO = {
+    A1:0,A2:1,A3:2,A4:3,A5:4,
+    B1:5,B2:6,B3:7,B4:2,B5:0,
+    C1:3,C2:5,C3:1,C4:6,C5:4,
+    D1:7,D2:2,D3:5,D4:0,D5:3
+  };
 
   function codeFor(img) {
     const card = img.closest('.ca-product');
@@ -39,9 +31,8 @@
   }
 
   function photoFor(code) {
-    const series = Math.max(0, code.charCodeAt(0) - 65);
-    const number = Math.max(1, parseInt(code.slice(1), 10) || 1);
-    return PHOTOS[series * 5 + number - 1];
+    const c = String(code || '').toUpperCase().match(/\b([ABCD][1-5])\b/)?.[1] || 'A1';
+    return FILES[CODE_TO_PHOTO[c] ?? 0];
   }
 
   function addPremiumTreatment(box, code) {
@@ -71,7 +62,7 @@
       .aveilot-photo-a4 img,.aveilot-photo-b4 img,.aveilot-photo-c4 img,.aveilot-photo-d4 img{object-position:top center}
       .aveilot-photo-a5 img,.aveilot-photo-b5 img,.aveilot-photo-c5 img,.aveilot-photo-d5 img{object-position:bottom center}
 
-      /* D-series only: distinct machine-scale/crop treatments. Cards and A-C remain untouched. */
+      /* D-series only: distinct machine-scale/crop treatments. */
       .aveilot-photo-d1 img{transform:scale(1.16);object-position:center 54%;filter:saturate(1.10) contrast(1.10) brightness(.88)}
       .aveilot-photo-d2 img{transform:scale(1.30);object-position:31% 47%;filter:saturate(1.14) contrast(1.12) brightness(.86)}
       .aveilot-photo-d3 img{transform:scale(1.08);object-position:69% 58%;filter:saturate(1.06) contrast(1.14) brightness(.90)}
