@@ -260,11 +260,12 @@ async function completeRental({ userId, rentalId }) {
   });
 }
 
-const PRODUCT_SELECT = `SELECT p.id, p.series, p.code, p.name, p.description, p.image_url, p.rental_fee, p.rental_days, p.return_amount, p.active, p.featured, p.inventory_total, COUNT(r.id)::int AS sold_count, GREATEST(p.inventory_total - COUNT(r.id)::int, 0)::int AS available_count FROM products p LEFT JOIN rentals r ON r.product_id = p.id`;
+const PRODUCT_SELECT = `SELECT p.id, p.series, p.code, p.name, p.description, p.image_url, p.rental_fee, p.rental_days, p.return_amount, p.active, p.featured, p.inventory_total, COALESCE(stock.sold_count, 0)::int AS sold_count, GREATEST(p.inventory_total - COALESCE(stock.sold_count, 0), 0)::int AS available_count FROM products p LEFT JOIN LATERAL (SELECT COUNT(*)::int AS sold_count FROM rentals r WHERE r.product_id = p.id) stock ON TRUE`;
 
 router.get("/products", async (req, res) => {
   try {
-    const result = await db.query(`${PRODUCT_SELECT} GROUP BY p.id ORDER BY p.series, p.id`);
+    const result = await db.query(`${PRODUCT_SELECT} ORDER BY p.series, p.id`);
+    res.set("Cache-Control", "no-store");
     res.json({ success: true, products: result.rows });
   } catch (error) {
     console.error("Products failed:", error);
@@ -276,7 +277,7 @@ router.get("/products/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ success: false, message: "Invalid product ID" });
   try {
-    const result = await db.query(`${PRODUCT_SELECT} WHERE p.id = $1 GROUP BY p.id`, [id]);
+    const result = await db.query(`${PRODUCT_SELECT} WHERE p.id = $1`, [id]);
     if (!result.rowCount) return res.status(404).json({ success: false, message: "Product not found" });
     res.json({ success: true, product: result.rows[0] });
   } catch (error) {
