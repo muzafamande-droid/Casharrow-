@@ -2,9 +2,33 @@
 const state = { products: [], selectedProduct: null };
 const money = (value) => `UGX ${Number(value || 0).toLocaleString()}`;
 
+const AVEILOT_MACHINE_FALLBACKS = {
+  A1:'https://images.pexels.com/photos/18816918/pexels-photo-18816918.jpeg?cs=srgb&dl=pexels-igovar-igovar-3000547-18816918.jpg&fm=jpg',
+  A2:'https://images.pexels.com/photos/35042792/pexels-photo-35042792.jpeg?cs=srgb&dl=pexels-theshuttervision-35042792.jpg&fm=jpg',
+  A3:'https://images.pexels.com/photos/5693845/pexels-photo-5693845.jpeg?cs=srgb&dl=pexels-ezrah-lane-3654374-5693845.jpg&fm=jpg',
+  A4:'https://images.pexels.com/photos/20091612/pexels-photo-20091612.jpeg?cs=srgb&dl=pexels-richard-wilson-779692900-20091612.jpg&fm=jpg',
+  A5:'https://images.stockcake.com/public/c/2/1/c21e252f-6a70-454d-8130-124d2be845d0_large/colossal-turbine-engine-stockcake.jpg',
+  B1:'https://images.stockcake.com/public/c/7/c/c7c13a81-5dc1-4cc3-8e33-012430c7007b_large/dynamic-industrial-turbine-stockcake.jpg',
+  B2:'https://images.stockcake.com/public/e/b/4/eb453184-925f-4963-b8eb-ad9d2bcabee5_large/green-energy-machine-stockcake.jpg',
+  B3:'https://images.stockcake.com/public/2/c/2/2c277ee3-8151-450a-8c5b-6685ab084196_large/industrial-turbine-assembly-stockcake.jpg',
+  B4:'https://images.pexels.com/photos/5693845/pexels-photo-5693845.jpeg?cs=srgb&dl=pexels-ezrah-lane-3654374-5693845.jpg&fm=jpg',
+  B5:'https://images.pexels.com/photos/18816918/pexels-photo-18816918.jpeg?cs=srgb&dl=pexels-igovar-igovar-3000547-18816918.jpg&fm=jpg',
+  C1:'https://images.pexels.com/photos/20091612/pexels-photo-20091612.jpeg?cs=srgb&dl=pexels-richard-wilson-779692900-20091612.jpg&fm=jpg',
+  C2:'https://images.stockcake.com/public/c/7/c/c7c13a81-5dc1-4cc3-8e33-012430c7007b_large/dynamic-industrial-turbine-stockcake.jpg',
+  C3:'https://images.pexels.com/photos/35042792/pexels-photo-35042792.jpeg?cs=srgb&dl=pexels-theshuttervision-35042792.jpg&fm=jpg',
+  C4:'https://images.stockcake.com/public/e/b/4/eb453184-925f-4963-b8eb-ad9d2bcabee5_large/green-energy-machine-stockcake.jpg',
+  C5:'https://images.stockcake.com/public/c/2/1/c21e252f-6a70-454d-8130-124d2be845d0_large/colossal-turbine-engine-stockcake.jpg',
+  D1:'https://images.stockcake.com/public/2/c/2/2c277ee3-8151-450a-8c5b-6685ab084196_large/industrial-turbine-assembly-stockcake.jpg',
+  D2:'https://images.pexels.com/photos/5693845/pexels-photo-5693845.jpeg?cs=srgb&dl=pexels-ezrah-lane-3654374-5693845.jpg&fm=jpg',
+  D3:'https://images.stockcake.com/public/c/7/c/c7c13a81-5dc1-4cc3-8e33-012430c7007b_large/dynamic-industrial-turbine-stockcake.jpg',
+  D4:'https://images.pexels.com/photos/18816918/pexels-photo-18816918.jpeg?cs=srgb&dl=pexels-igovar-igovar-3000547-18816918.jpg&fm=jpg',
+  D5:'https://images.pexels.com/photos/20091612/pexels-photo-20091612.jpeg?cs=srgb&dl=pexels-richard-wilson-779692900-20091612.jpg&fm=jpg'
+};
+
 function productImage(product) {
-  const url = String(product.image_url || product.imageUrl || '').trim();
-  const name = String(product.name || 'AVEILOT machine').replace(/["<>]/g, '');
+  const code = String(product.code || product.name || product.title || '').match(/\\b([ABCD][1-5])\\b/i)?.[1]?.toUpperCase() || '';
+  const url = String(product.image_url || product.imageUrl || AVEILOT_MACHINE_FALLBACKS[code] || '').trim();
+  const name = String(product.name || product.title || 'AVEILOT machine').replace(/["<>]/g, '');
   if (!url) return `<div class="machine-image-missing"><div>AVEILOT</div><span>Machine photo not set</span></div>`;
   const safe = url.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return `<img class="admin-machine-image" src="${safe}" alt="${name}" loading="lazy" decoding="async" referrerpolicy="no-referrer"><div class="machine-image-missing image-load-fallback" style="display:none"><div>AVEILOT</div><span>Machine photo unavailable</span></div>`;
